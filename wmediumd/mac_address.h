@@ -29,5 +29,7 @@ struct mac_address {
 };
 
 struct mac_address string_to_mac_address(const char* str);
+void mac_address_to_string(char *str, const struct mac_address *mac);
+
 
 #endif /* MAC_ADDRESS_H_ */

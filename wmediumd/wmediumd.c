@@ -179,6 +179,9 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 		/*received signal level*/
 		int signal = get_signal_by_rate(rate_idx);
 
+		char mac_str[13] = {0}; /* enough for one MAC address */
+		mac_address_to_string(mac_str, src);
+		printf ("sent from %s\n", mac_str);
 		send_cloned_frame_msg(dst,data,data_len,rate_idx,signal);
 		sent++;
 		return 1;
