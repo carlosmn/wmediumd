@@ -47,10 +47,13 @@ CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig 
 OBJECTS=wmediumd.o probability.o mac_address.o config.o
 
-all: wmediumd 
+all: wmediumd relayer
 
 wmediumd: $(OBJECTS) 
-	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) 
- 
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
+
+relayer: relayer.o
+	$(CC) -o $@ relayer.o -lzmq
+
 clean: 
-	rm -f $(OBJECTS) wmediumd
+	rm -f $(OBJECTS) wmediumd relayer
