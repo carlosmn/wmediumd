@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <getopt.h>
 #include <signal.h>
+#include <zmq.h>
 
 #include "wmediumd.h"
 #include "probability.h"
@@ -45,6 +46,9 @@ int running = 0;
 struct jammer_cfg jam_cfg;
 double *prob_matrix;
 int size;
+
+static void *zsock;
+static void *context;
 
 static int received = 0;
 static int sent = 0;
@@ -180,8 +184,21 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 		int signal = get_signal_by_rate(rate_idx);
 
 		char mac_str[13] = {0}; /* enough for one MAC address */
-		mac_address_to_string(mac_str, src);
-		printf ("sent from %s\n", mac_str);
+		mac_address_to_string(mac_str, dst);
+
+		zmq_msg_t req, reply;
+		zmq_msg_init_size(&req, 13);
+		memcpy(zmq_msg_data(&req), mac_str, 13);
+		zmq_send(zsock, &req, 0);
+		zmq_msg_close(&req);
+
+		zmq_msg_init(&reply);
+		zmq_recv(zsock, &reply, 0);
+
+		if (!strcmp("OK", zmq_msg_data(&reply))) {
+			printf("Oops: %s\n", zmq_msg_data(&reply));
+		}
+		zmq_msg_close(&reply);
 		send_cloned_frame_msg(dst,data,data_len,rate_idx,signal);
 		sent++;
 		return 1;
@@ -484,6 +501,10 @@ int main(int argc, char* argv[]) {
 	/*init netlink*/
 	init_netlink();
 
+	context  = zmq_init(1);
+	zsock = zmq_socket(context, ZMQ_REQ);
+	zmq_connect(zsock, "ipc:///tmp/hwsim");
+
 	/*Send a register msg to the kernel*/
 	if (send_register_msg()==0)
 		printf("REGISTER SENT!\n");
@@ -500,6 +521,8 @@ int main(int argc, char* argv[]) {
 	free(cache);
 	free(family);
 	free(prob_matrix);
+	zmq_close(zsock);
+	zmq_term(context);
 
 	return EXIT_SUCCESS;
 }
