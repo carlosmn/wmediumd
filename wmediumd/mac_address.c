@@ -41,18 +41,3 @@ struct mac_address string_to_mac_address(const char* str)
 
 	return mac;
 }
-
-static char hexen[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
-};
-
-void mac_address_to_string(char *str, const struct mac_address *mac)
-{
-	int i;
-	for (i = 0; i < 6; i++) {
-		str[i*2] = hexen[(mac->addr[i] & 0xf0) >> 4];
-		str[i*2+1] = hexen[mac->addr[i] & 0x0f];
-	}
-
-}

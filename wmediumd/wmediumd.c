@@ -184,20 +184,18 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 		/*received signal level*/
 		int signal = get_signal_by_rate(rate_idx);
 
-		char mac_str[13] = {0}; /* enough for one MAC address */
 		zmq_msg_t msg;
+		size_t size = sizeof(struct mac_address);
 
 		/* First send the source */
-		mac_address_to_string(mac_str, src);
-		zmq_msg_init_size(&msg, 13);
-		memcpy(zmq_msg_data(&msg), mac_str, 13);
+		zmq_msg_init_size(&msg, size);
+		memcpy(zmq_msg_data(&msg), src, size);
 		zmq_send(zsock, &msg, ZMQ_SNDMORE);
 		zmq_msg_close(&msg);
 
 		/* Then the destination */
-		mac_address_to_string(mac_str, dst);
-		zmq_msg_init_size(&msg, 13);
-		memcpy(zmq_msg_data(&msg), mac_str, 13);
+		zmq_msg_init_size(&msg, size);
+		memcpy(zmq_msg_data(&msg), dst, size);
 		zmq_send(zsock, &msg, 0);
 
 		zmq_recv(zsock, &msg, 0);
