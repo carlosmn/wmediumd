@@ -17,8 +17,12 @@ int main (void)
 			/* Make sure we process all of the message */
 			zmq_msg_init (&message);
 			zmq_recv (wmediumd, &message, 0);
+
+			more = 0;
+			more_size = sizeof(more);
 			zmq_getsockopt (wmediumd, ZMQ_RCVMORE, &more, &more_size);
 
+			printf("Sending message with%s continuation\n", more ? "" : "out");
 			zmq_send (dispatch, &message, more? ZMQ_SNDMORE: 0);
 			zmq_msg_close (&message);
 
