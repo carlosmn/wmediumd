@@ -59,6 +59,24 @@ int main(int argc, char **argv)
 		mac_address_to_string(mac, zmq_msg_data(&msg));
 		printf("-> %s\n", mac);
 
+		more = 0;
+		more_size = sizeof(more);
+		zmq_getsockopt(s, ZMQ_RCVMORE, &more, &more_size);
+
+		if (!more) {
+			/* We should receive two parts. Something went wrong */
+			char *str = "ERROR: Message is missing";
+			puts(str);
+			zmq_msg_init_data(&msg, str, strlen(str) + 1, NULL, NULL);
+			zmq_send(s, &msg, 0);
+			continue;
+		}
+
+		zmq_msg_init(&msg);
+		zmq_recv(s, &msg, 0);
+
+		/* msg now holds the actual frame the iface wanted to send */
+
 		zmq_msg_init_data(&msg, "OK", strlen("OK") + 1, NULL, NULL);
 		zmq_send(s, &msg, 0);
 

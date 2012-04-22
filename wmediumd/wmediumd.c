@@ -196,6 +196,11 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 		/* Then the destination */
 		zmq_msg_init_size(&msg, size);
 		memcpy(zmq_msg_data(&msg), dst, size);
+		zmq_send(zsock, &msg, ZMQ_SNDMORE);
+
+		zmq_msg_init_size(&msg, data_len);
+		/* TODO: See if we can zero-copy this */
+		memcpy(zmq_msg_data(&msg), data, data_len);
 		zmq_send(zsock, &msg, 0);
 
 		zmq_recv(zsock, &msg, 0);
