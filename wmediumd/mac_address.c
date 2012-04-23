@@ -49,10 +49,14 @@ static char hexen[] = {
 
 void mac_address_to_string(char *str, const struct mac_address *mac)
 {
-	int i;
-	for (i = 0; i < 6; i++) {
-		str[i*2] = hexen[(mac->addr[i] & 0xf0) >> 4];
-		str[i*2+1] = hexen[mac->addr[i] & 0x0f];
+	int i, off;
+	for (i = 0, off = 0; i < 6; i++) {
+		str[i*2+off] = hexen[(mac->addr[i] & 0xf0) >> 4];
+		str[i*2+off+1] = hexen[mac->addr[i] & 0x0f];
+		str[i*2+off+2] = ':';
+		off += 1;
 	}
 
+	/* The loop above write a colon too much, compensate */
+	str[(i-1)*2+off+1] = '\0';
 }

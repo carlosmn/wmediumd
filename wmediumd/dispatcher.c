@@ -13,7 +13,7 @@ struct jammer_cfg jam_cfg;
 int main(int argc, char **argv)
 {
 	void *ctx, *s;
-	char mac[13] = {0};
+	char mac[18] = {0};
 
 	ctx = zmq_init(1);
 	s = zmq_socket(ctx, ZMQ_REP);
