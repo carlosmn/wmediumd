@@ -3,7 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "mac_address.h"
+#include "wmediumd.h"
 
+/* This is to make config.c happy */
+double *prob_matrix = NULL;
+int size = 0;
+struct jammer_cfg jam_cfg = {0};
 
 static char hexen[] = {
 	'0', '1', '2', '3', '4', '5', '6', '7',
@@ -28,6 +33,8 @@ int main(int argc, char **argv)
 	ctx = zmq_init(1);
 	s = zmq_socket(ctx, ZMQ_REP);
 	zmq_bind(s, "tcp://*:5555");
+
+	load_config("dispatcher-config.cfg");
 
 	while (1) {
 		zmq_msg_t msg;

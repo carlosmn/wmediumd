@@ -45,18 +45,18 @@ NLVERSION :=$(shell $(PKG_CONFIG) --print-provides $(NLLIBNAME))
 
 CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig -lzmq
-OBJECTS=wmediumd.o probability.o mac_address.o config.o
+OBJECTS=probability.o mac_address.o config.o
 
 all: wmediumd relayer dispatcher
 
 wmediumd: $(OBJECTS) 
-	$(CC) -o $@ $(OBJECTS) $(LDFLAGS)
+	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
 
 relayer: relayer.o
 	$(CC) -o $@ relayer.o -lzmq
 
-dispatcher: dispatcher.o
-	$(CC) -o $@ dispatcher.o -lzmq
+dispatcher: dispatcher.o config.o
+	$(CC) -o $@ dispatcher.o $(OBJECTS) $(LDFLAGS)
 
 clean: 
 	rm -f $(OBJECTS) wmediumd relayer
