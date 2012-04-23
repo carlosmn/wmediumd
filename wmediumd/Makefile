@@ -47,13 +47,16 @@ CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig -lzmq
 OBJECTS=probability.o mac_address.o config.o
 
-all: wmediumd relayer dispatcher
+all: wmediumd relayer dispatcher test
 
 wmediumd: $(OBJECTS) 
 	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
 
 relayer: relayer.o
 	$(CC) -o $@ relayer.o -lzmq
+
+test: test.o
+	$(CC) -o $@ test.o mac_address.o -lzmq
 
 dispatcher: dispatcher.o config.o
 	$(CC) -o $@ dispatcher.o $(OBJECTS) $(LDFLAGS)
