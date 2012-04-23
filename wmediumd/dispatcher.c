@@ -8,7 +8,7 @@
 /* This is to make config.c happy */
 double *prob_matrix = NULL;
 int size = 0;
-struct jammer_cfg jam_cfg = {0};
+struct jammer_cfg jam_cfg;
 
 int main(int argc, char **argv)
 {
@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 	s = zmq_socket(ctx, ZMQ_REP);
 	zmq_bind(s, "tcp://*:5555");
 
+	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
 
 	while (1) {
