@@ -49,7 +49,7 @@ OBJECTS=probability.o mac_address.o config.o
 
 all: wmediumd relayer dispatcher test
 
-wmediumd: $(OBJECTS) 
+wmediumd: wmediumd.o $(OBJECTS)
 	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
 
 relayer: relayer.o
@@ -58,7 +58,7 @@ relayer: relayer.o
 test: test.o
 	$(CC) -o $@ test.o mac_address.o -lzmq
 
-dispatcher: dispatcher.o config.o
+dispatcher: dispatcher.o $(OBJECTS)
 	$(CC) -o $@ dispatcher.o $(OBJECTS) $(LDFLAGS)
 
 clean: 
