@@ -169,36 +169,15 @@ int write_config(char *file, int ifaces, float value)
 	exit(EXIT_SUCCESS);
 }
 
-/*
- *	Loads a config file into memory
- */
-
-int load_config(const char *file)
+void load_jam(config_t *cf)
 {
+	const config_setting_t *jammer_s;
+	int i;
 
-	config_t cfg, *cf;
-	const config_setting_t *ids, *prob_list, *mat_array, *jammer_s;
-	int count_ids, rates_prob, i, j;
-	long int count_value, rates_value;
-
-	/*initialize the config file*/
-	cf = &cfg;
-	config_init(cf);
-
-	/*read the file*/
-	if (!config_read_file(cf, file)) {
-		printf("Error loading file %s at line:%d, reason: %s\n",
-		file,
-		config_error_line(cf),
-		config_error_text(cf));
-		config_destroy(cf);
-		exit(EXIT_FAILURE);
-    	}
-
-	/* get jammer settings */
+	/* If it's not there at all,  */
 	if (!(jammer_s = config_lookup(cf, "jam"))) {
-		printf("Error, malformed config!");
-		exit(EXIT_FAILURE);
+		jam_cfg.jam_all = 0;
+		return;
 	}
 	switch (config_setting_type(jammer_s)) {
 	case CONFIG_TYPE_STRING:
@@ -219,6 +198,36 @@ int load_config(const char *file)
 		}
 		break;
 	}
+}
+
+/*
+ *	Loads a config file into memory
+ */
+
+int load_config(const char *file)
+{
+
+	config_t cfg, *cf;
+	const config_setting_t *ids, *prob_list, *mat_array;
+	int count_ids, rates_prob, i, j;
+	int count_value, rates_value;
+
+	/*initialize the config file*/
+	cf = &cfg;
+	config_init(cf);
+
+	/*read the file*/
+	if (!config_read_file(cf, file)) {
+		printf("Error loading file %s at line:%d, reason: %s\n",
+		file,
+		config_error_line(cf),
+		config_error_text(cf));
+		config_destroy(cf);
+		exit(EXIT_FAILURE);
+    	}
+
+	/* get jammer settings */
+	load_jam(cf);
 
 	/*let's parse the values*/
 	config_lookup_int(cf, "ifaces.count", &count_value);
@@ -227,7 +236,7 @@ int load_config(const char *file)
 
 	/*cross check*/
 	if (count_value != count_ids) {
-		printf("Error on ifaces.count");
+		printf("Error on ifaces.count, %d vs %d\n", count_value, count_ids);
 		exit(EXIT_FAILURE);
 	}
 
