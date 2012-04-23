@@ -10,21 +10,6 @@ double *prob_matrix = NULL;
 int size = 0;
 struct jammer_cfg jam_cfg = {0};
 
-static char hexen[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
-};
-
-static void mac_address_to_string(char *str, const struct mac_address *mac)
-{
-	int i;
-	for (i = 0; i < 6; i++) {
-		str[i*2] = hexen[(mac->addr[i] & 0xf0) >> 4];
-		str[i*2+1] = hexen[mac->addr[i] & 0x0f];
-	}
-
-}
-
 int main(int argc, char **argv)
 {
 	void *ctx, *s;
