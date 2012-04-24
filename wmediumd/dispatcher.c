@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include "mac_address.h"
 #include "wmediumd.h"
 
@@ -9,6 +10,30 @@
 double *prob_matrix = NULL;
 int size = 0;
 struct jammer_cfg jam_cfg;
+
+/* Performance statistics */
+static struct timeval tv;
+static long int processed;
+static long int processed_size;
+
+void exit_handler(int signal)
+{
+	struct timeval end;
+	long int diff;
+
+	if (gettimeofday(&end, NULL)){
+		perror("gettimeofday");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Figure out how long we ran */
+	diff = end.tv_sec - tv.tv_sec;
+	printf("Ran for %d seconds\n", diff);
+	printf("Average %ld xfer/sec\n", processed/diff);
+	printf("Average %ld bytes/sec\n", processed_size/diff);
+
+	exit(EXIT_SUCCESS);
+}
 
 int main(int argc, char **argv)
 {
@@ -21,6 +46,16 @@ int main(int argc, char **argv)
 
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
+
+	if (gettimeofday(&tv, NULL)) {
+		perror("gettimeofday");
+		return EXIT_FAILURE;
+	}
+
+	if (signal(SIGINT, exit_handler) == SIG_ERR) {
+		perror("signal");
+		return EXIT_FAILURE;
+	}
 
 	while (1) {
 		zmq_msg_t msg;
@@ -67,6 +102,7 @@ int main(int argc, char **argv)
 
 		zmq_msg_init(&msg);
 		zmq_recv(s, &msg, 0);
+		processed_size += zmq_msg_size(&msg);
 
 		/* msg now holds the actual frame the iface wanted to send */
 
@@ -74,9 +110,10 @@ int main(int argc, char **argv)
 		zmq_send(s, &msg, 0);
 
 		zmq_msg_close(&msg);
+
+		processed++;
 	}
 
-	/* TODO: catch C-x */
 	zmq_close(s);
 	zmq_term(ctx);
 
