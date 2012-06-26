@@ -37,12 +37,14 @@ void exit_handler(int signal)
 
 int main(int argc, char **argv)
 {
-	void *ctx, *s;
+	void *ctx, *s, *s_pub;
 	char mac[18] = {0};
 
 	ctx = zmq_init(1);
-	s = zmq_socket(ctx, ZMQ_REP);
+	s = zmq_socket(ctx, ZMQ_PULL);
 	zmq_bind(s, "tcp://*:5555");
+	s_pub = zmq_socket(ctx, ZMQ_PUB);
+	zmq_bind(s, "tcp://*:5556");
 
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
@@ -58,33 +60,31 @@ int main(int argc, char **argv)
 	}
 
 	while (1) {
-		zmq_msg_t msg;
+		zmq_msg_t msg, dst, src;
 		size_t more, more_size;
 
-		zmq_msg_init(&msg);
-		zmq_recv(s, &msg, 0);
+		zmq_msg_init(&src);
+		zmq_recv(s, &src, 0);
 
-		mac_address_to_string(mac, zmq_msg_data(&msg));
+		mac_address_to_string(mac, zmq_msg_data(&src));
+
 		printf("Frame %s ", mac);
-		zmq_msg_close(&msg);
 
 		more = 0;
 		more_size = sizeof(more);
 		zmq_getsockopt(s, ZMQ_RCVMORE, &more, &more_size);
 
 		if (!more) {
-			/* We should receive two parts. Something went wrong */
-			char *str = "ERROR: Second part is missing";
-			puts(str);
-			zmq_msg_init_data(&msg, str, strlen(str) + 1, NULL, NULL);
-			zmq_send(s, &msg, 0);
+			/* We should receive three parts. Something went wrong */
+			char *str = "ERROR: Destination is missing";
+			fputs(str, stderr);
 			continue;
 		}
 
 		/* Grab the scond part which is the destination */
-		zmq_msg_init(&msg);
-		zmq_recv(s, &msg, 0);
-		mac_address_to_string(mac, zmq_msg_data(&msg));
+		zmq_msg_init(&dst);
+		zmq_recv(s, &dst, 0);
+		mac_address_to_string(mac, zmq_msg_data(&dst));
 		printf("-> %s\n", mac);
 
 		more = 0;
@@ -92,11 +92,9 @@ int main(int argc, char **argv)
 		zmq_getsockopt(s, ZMQ_RCVMORE, &more, &more_size);
 
 		if (!more) {
-			/* We should receive two parts. Something went wrong */
+			/* We should receive three parts. Something went wrong */
 			char *str = "ERROR: Message is missing";
-			puts(str);
-			zmq_msg_init_data(&msg, str, strlen(str) + 1, NULL, NULL);
-			zmq_send(s, &msg, 0);
+			fputs(str, stderr);
 			continue;
 		}
 
@@ -104,11 +102,12 @@ int main(int argc, char **argv)
 		zmq_recv(s, &msg, 0);
 		processed_size += zmq_msg_size(&msg);
 
-		/* msg now holds the actual frame the iface wanted to send */
+		zmq_send(s_pub, &dst, 0); /* For the SUB filter */
+		zmq_send(s_pub, &src, 0);
+		zmq_send(s_pub, &msg, 0);
 
-		zmq_msg_init_data(&msg, "OK", strlen("OK") + 1, NULL, NULL);
-		zmq_send(s, &msg, 0);
-
+		zmq_msg_close(&src);
+		zmq_msg_close(&dst);
 		zmq_msg_close(&msg);
 
 		processed++;
