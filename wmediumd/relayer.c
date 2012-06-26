@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <zmq.h>
 
 int main (void)
