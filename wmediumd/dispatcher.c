@@ -28,9 +28,9 @@ void exit_handler(int signal)
 
 	/* Figure out how long we ran */
 	diff = end.tv_sec - tv.tv_sec;
-	printf("Ran for %d seconds\n", diff);
-	printf("Average %ld xfer/sec\n", processed/diff);
-	printf("Average %ld bytes/sec\n", processed_size/diff);
+	fprintf(stderr, "Ran for %d seconds\n", diff);
+	fprintf(stderr, "Average %ld xfer/sec\n", processed/diff);
+	fprintf(stderr, "Average %ld bytes/sec\n", processed_size/diff);
 
 	exit(EXIT_SUCCESS);
 }
@@ -102,8 +102,8 @@ int main(int argc, char **argv)
 		zmq_recv(s, &msg, 0);
 		processed_size += zmq_msg_size(&msg);
 
-		zmq_send(s_pub, &dst, 0); /* For the SUB filter */
-		zmq_send(s_pub, &src, 0);
+		zmq_send(s_pub, &dst, ZMQ_SNDMORE); /* For the SUB filter */
+		zmq_send(s_pub, &src, ZMQ_SNDMORE);
 		zmq_send(s_pub, &msg, 0);
 
 		zmq_msg_close(&src);
