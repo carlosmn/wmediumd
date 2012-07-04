@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	s = zmq_socket(ctx, ZMQ_PULL);
 	zmq_bind(s, "tcp://*:5555");
 	s_pub = zmq_socket(ctx, ZMQ_PUB);
-	zmq_bind(s, "tcp://*:5556");
+	zmq_bind(s_pub, "tcp://*:5556");
 
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
