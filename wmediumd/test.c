@@ -43,13 +43,14 @@ int main(int argc, char **argv)
 
 	src_mac = string_to_mac_address(src_addr);
 	dst_mac = string_to_mac_address(dst_addr);
+	zmq_setsockopt(zsock_sub, ZMQ_SUBSCRIBE, &src_mac, sizeof(struct mac_address));
 	zmq_connect(zsock, "tcp://localhost:5555");
 	zmq_connect(zsock_sub, "tcp://localhost:5556");
-	zmq_setsockopt(zsock_sub, ZMQ_SUBSCRIBE, &src_mac, sizeof(struct mac_address));
 
 	while(1){
 		zmq_msg_t msg, dst, src, s_msg, s_dst, s_src;
-		size_t more, more_size;
+		int64_t more;
+		size_t more_size;
 
 		/* Source */
 		zmq_msg_init_data(&s_src, &src_mac, sizeof(struct mac_address), NULL, NULL);
@@ -72,6 +73,7 @@ int main(int argc, char **argv)
 		if (zmq_recv(zsock_sub, &dst, ZMQ_NOBLOCK) < 0) {
 			if (errno == EAGAIN) {
 				zmq_msg_close(&dst);
+				//sleep(1);
 				continue;
 			}
 
@@ -106,10 +108,11 @@ int main(int argc, char **argv)
 		}
 
 		zmq_msg_init(&reply);
-		puts("recv more");
+		//puts("recv more");
 		zmq_recv(zsock_sub, &reply, 0);
 
 		zmq_msg_close(&dst);
 		zmq_msg_close(&reply);
+		//sleep(1);
 	}
 }

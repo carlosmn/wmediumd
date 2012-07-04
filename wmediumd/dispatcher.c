@@ -61,7 +61,8 @@ int main(int argc, char **argv)
 
 	while (1) {
 		zmq_msg_t msg, dst, src;
-		size_t more, more_size;
+		int64_t more;
+		size_t more_size;
 
 		zmq_msg_init(&src);
 		zmq_recv(s, &src, 0);
