@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 		if (zmq_recv(zsock_sub, &dst, ZMQ_NOBLOCK) < 0) {
 			if (errno == EAGAIN) {
 				zmq_msg_close(&dst);
-				//sleep(1);
+				sleep(1);
 				continue;
 			}
 
@@ -113,6 +113,6 @@ int main(int argc, char **argv)
 
 		zmq_msg_close(&dst);
 		zmq_msg_close(&reply);
-		//sleep(1);
+		sleep(1);
 	}
 }
