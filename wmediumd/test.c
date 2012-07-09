@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <zmq.h>
 #include "mac_address.h"
+#include "ctl.h"
 
 static const char *my_addr = "40:00:00:00:00:00";
 static const char *other_addr = "40:00:00:00:10:00";
@@ -15,10 +16,16 @@ int main(int argc, char **argv)
 	void *context = zmq_init(1);
 	void *zsock = zmq_socket(context, ZMQ_PUSH);
 	void *zsock_sub = zmq_socket(context, ZMQ_SUB);
+	/* Receive instructions from the dispatcher */
+	void *zsock_ctl = zmq_socket(context, ZMQ_PULL);
 	zmq_msg_t req, reply, src;
 	const char rnd[] = "pretend I'm random data";
 	struct mac_address src_mac, dst_mac;
-	int c;
+	int c, polls;
+	zmq_pollitem_t polli[] = {
+		{ zsock_sub, 0, ZMQ_POLLIN, 0 },
+		{ zsock_ctl, 0, ZMQ_POLLIN, 0 },
+	};
 
 	while ((c = getopt(argc, argv, "s:d:")) != -1) {
 		switch (c) {
@@ -46,11 +53,12 @@ int main(int argc, char **argv)
 	zmq_setsockopt(zsock_sub, ZMQ_SUBSCRIBE, &src_mac, sizeof(struct mac_address));
 	zmq_connect(zsock, "tcp://localhost:5555");
 	zmq_connect(zsock_sub, "tcp://localhost:5556");
+	zmq_connect(zsock_ctl, "tcp://localhost:5557");
 
 	while(1){
 		zmq_msg_t msg, dst, src, s_msg, s_dst, s_src;
 		int64_t more;
-		size_t more_size;
+		size_t more_size = sizeof(more);
 
 		/* Source */
 		zmq_msg_init_data(&s_src, &src_mac, sizeof(struct mac_address), NULL, NULL);
@@ -68,21 +76,18 @@ int main(int argc, char **argv)
 		zmq_send(zsock, &req, 0);
 		zmq_msg_close(&req);
 
-		zmq_msg_init(&dst);
-		errno = 0;
-		if (zmq_recv(zsock_sub, &dst, ZMQ_NOBLOCK) < 0) {
-			if (errno == EAGAIN) {
-				zmq_msg_close(&dst);
-				sleep(1);
-				continue;
-			}
-
-			perror("zmq_recv");
-			break;
+		if ((polls = zmq_poll(polli, 2, 10000)) < 0) {
+			perror("zmq_poll");
+			exit(EXIT_FAILURE);
 		}
 
+		if (polls == 0)
+			continue;
+
+		zmq_msg_init(&dst);
+
 		more = 0;
-		more_size = sizeof(more);
+		zmq_recv(zsock_sub, &dst, 0);
 		zmq_getsockopt(zsock_sub, ZMQ_RCVMORE, &more, &more_size);
 
 		if (!more) {
@@ -97,7 +102,6 @@ int main(int argc, char **argv)
 		zmq_msg_close(&src);
 		
 		more = 0;
-		more_size = sizeof(more);
 		zmq_getsockopt(zsock_sub, ZMQ_RCVMORE, &more, &more_size);
 
 		if (!more) {

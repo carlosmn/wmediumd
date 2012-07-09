@@ -5,6 +5,7 @@
 #include <signal.h>
 #include "mac_address.h"
 #include "wmediumd.h"
+#include "ctl.h"
 
 /* This is to make config.c happy */
 double *prob_matrix = NULL;
@@ -37,14 +38,19 @@ void exit_handler(int signal)
 
 int main(int argc, char **argv)
 {
-	void *ctx, *s, *s_pub;
+	void *ctx, *s, *s_pub, *s_ctl;
 	char mac[18] = {0};
 
 	ctx = zmq_init(1);
+	/* Receives messages from the interfaces */
 	s = zmq_socket(ctx, ZMQ_PULL);
 	zmq_bind(s, "tcp://*:5555");
+	/* Sends messages to the interfaces */
 	s_pub = zmq_socket(ctx, ZMQ_PUB);
 	zmq_bind(s_pub, "tcp://*:5556");
+	/* Sends control information to the interfaces */
+	s_ctl = zmq_socket(ctx, ZMQ_PUSH);
+	zmq_bind(s, "tcp://*:5557");
 
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
