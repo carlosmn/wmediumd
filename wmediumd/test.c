@@ -11,6 +11,22 @@ static const char *other_addr = "40:00:00:00:10:00";
 static const char *src_addr;
 static const char *dst_addr;
 
+static int swan(void *sock)
+{
+	zmq_msg_t msg;
+
+	puts("in swan");
+	zmq_msg_init(&msg);
+	zmq_recv(sock, &msg, 0);
+	if (memcpy(CTL_BYE, zmq_msg_data(&msg), strlen(CTL_BYE))) {
+		puts("BAI");
+		exit(EXIT_SUCCESS);
+	}
+	zmq_close(&msg);
+
+	fputs("Unknown control code", stderr);
+}
+
 int main(int argc, char **argv)
 {
 	void *context = zmq_init(1);
@@ -22,10 +38,7 @@ int main(int argc, char **argv)
 	const char rnd[] = "pretend I'm random data";
 	struct mac_address src_mac, dst_mac;
 	int c, polls;
-	zmq_pollitem_t polli[] = {
-		{ zsock_sub, 0, ZMQ_POLLIN, 0 },
-		{ zsock_ctl, 0, ZMQ_POLLIN, 0 },
-	};
+	zmq_pollitem_t polli[2];
 
 	while ((c = getopt(argc, argv, "s:d:")) != -1) {
 		switch (c) {
@@ -42,6 +55,12 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
+
+	memset(polli, 0, sizeof(polli));
+	polli[0].socket = zsock_sub;
+	polli[0].events = ZMQ_POLLIN;
+	polli[1].socket = zsock_ctl;
+	polli[1].events = ZMQ_POLLIN;
 
 	if (!src_addr)
 		src_addr = my_addr;
@@ -76,13 +95,18 @@ int main(int argc, char **argv)
 		zmq_send(zsock, &req, 0);
 		zmq_msg_close(&req);
 
-		if ((polls = zmq_poll(polli, 2, 10000)) < 0) {
+		if ((polls = zmq_poll(polli, 2, 100000)) < 0) {
 			perror("zmq_poll");
 			exit(EXIT_FAILURE);
 		}
 
-		if (polls == 0)
+		if (polls == 0) {
+			puts("didn't get anything");
 			continue;
+		}
+
+		if (polli[1].revents & ZMQ_POLLIN)
+			swan(zsock_ctl);
 
 		zmq_msg_init(&dst);
 

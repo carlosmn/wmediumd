@@ -17,10 +17,13 @@ static struct timeval tv;
 static long int processed;
 static long int processed_size;
 
+static void *s_ctl;
+
 void exit_handler(int signal)
 {
 	struct timeval end;
 	long int diff;
+	zmq_msg_t msg;
 
 	if (gettimeofday(&end, NULL)){
 		perror("gettimeofday");
@@ -33,12 +36,16 @@ void exit_handler(int signal)
 	fprintf(stderr, "Average %ld xfer/sec\n", processed/diff);
 	fprintf(stderr, "Average %ld bytes/sec\n", processed_size/diff);
 
+	zmq_msg_init_data(&msg, CTL_BYE, strlen(CTL_BYE), NULL, NULL);
+	zmq_send(s_ctl, &msg, 0);
+	zmq_close(&msg);
+
 	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char **argv)
 {
-	void *ctx, *s, *s_pub, *s_ctl;
+	void *ctx, *s, *s_pub;
 	char mac[18] = {0};
 
 	ctx = zmq_init(1);
