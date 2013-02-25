@@ -29,10 +29,9 @@
 #include "probability.h"
 #include "ieee80211.h"
 
-static int array_size = 0;
+static int array_size;
+static size_t node_size;
 static struct mac_address *indexer;
-
-static struct node *nodes;
 
 void put_mac_address(struct mac_address addr, int pos)
 {
@@ -168,14 +167,20 @@ double find_prob_by_addrs_and_rate (double *aMatrix, struct mac_address *src,
 
 struct node *init_probability(int num)
 {
-	size_t size;
 	struct node *nodes;
 
+	array_size = num;
+
+	indexer = malloc(sizeof(struct mac_address)*array_size);
+	if (!indexer) {
+		perror("indexer allocation");
+		exit(EXIT_FAILURE);
+	}
 	/*
 	 * The size we need for each node is the size of the struct
 	 * plus the size of its neighbour array
 	 */
-	size = sizeof(struct node) + sizeof(struct node *) * num;
+	node_size = sizeof(struct node) + sizeof(struct node *) * num;
 	nodes = calloc(num, size);
 
 	if (!nodes) {

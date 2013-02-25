@@ -7,10 +7,11 @@
 #include <netinet/in.h>
 #include "mac_address.h"
 #include "wmediumd.h"
+#include "probability.h"
 #include "ctl.h"
 
 /* This is to make config.c happy */
-double *prob_matrix = NULL;
+struct node *prob_matrix = NULL;
 int size = 0;
 struct jammer_cfg jam_cfg;
 
