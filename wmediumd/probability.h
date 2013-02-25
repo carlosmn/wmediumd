@@ -25,9 +25,23 @@
 #ifndef PROBABILITY_H_
 #define PROBABILITY_H_
 
+#include "mac_address.h"
+
+struct node;
+
+struct edge {
+	float loss;
+	struct node *node;
+};
+
+struct node {
+	struct mac_address addr;
+	struct edge neighbours[]; /* dynamically allocated */
+};
+
+
 #define MATRIX_PROB(MATRIX,LIMITS,X,Y,Z) (MATRIX)[((X)+(Y)*(LIMITS))+((LIMITS)*(LIMITS)*(Z))]
 
-#include "mac_address.h"
 
 void put_mac_address(struct mac_address addr, int pos);
 struct mac_address *get_mac_address(int pos);
@@ -40,7 +54,7 @@ double generate_random_double();
 double find_prob_by_addrs_and_rate (double *aMatrix,struct mac_address *src, 
 				    struct mac_address *dst, int rate_idx);
 
-double * init_probability(int size);
+struct node *init_probability(int num);
 
 
 

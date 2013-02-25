@@ -32,6 +32,7 @@
 static int array_size = 0;
 static struct mac_address *indexer;
 
+static struct node *nodes;
 
 void put_mac_address(struct mac_address addr, int pos)
 {
@@ -165,7 +166,27 @@ double find_prob_by_addrs_and_rate (double *aMatrix, struct mac_address *src,
  *	Returns a pointer to the probability matrix
  */
 
-double * init_probability(int size) {
+struct node *init_probability(int num)
+{
+	size_t size;
+	struct node *nodes;
+
+	/*
+	 * The size we need for each node is the size of the struct
+	 * plus the size of its neighbour array
+	 */
+	size = sizeof(struct node) + sizeof(struct node *) * num;
+	nodes = calloc(num, size);
+
+	if (!nodes) {
+		perror("probability matrix allocation");
+		exit(EXIT_FAILURE);
+	}
+
+	return nodes;
+}
+
+double * init_probability0(int size) {
 
 	array_size = size;
 	indexer = malloc(sizeof(struct mac_address)*array_size);
