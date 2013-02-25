@@ -44,13 +44,13 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags $(NLLIBNAME))
 NLVERSION :=$(shell $(PKG_CONFIG) --print-provides $(NLLIBNAME))
 
 CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
-LDFLAGS+=-lconfig -lzmq
+LDFLAGS+=-lconfig
 OBJECTS=probability.o mac_address.o config.o
 
 all: wmediumd relayer dispatcher test
 
 wmediumd: wmediumd.o $(OBJECTS)
-	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
+	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS) -lzmq
 
 relayer: relayer.o
 	$(CC) -o $@ relayer.o -lzmq
