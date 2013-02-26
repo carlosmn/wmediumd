@@ -11,7 +11,7 @@
 #include "ctl.h"
 
 /* This is to make config.c happy */
-struct node *prob_matrix = NULL;
+double *prob_matrix = NULL;
 int size = 0;
 struct jammer_cfg jam_cfg;
 

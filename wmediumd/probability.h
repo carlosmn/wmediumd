@@ -54,7 +54,7 @@ double generate_random_double();
 double find_prob_by_addrs_and_rate (double *aMatrix,struct mac_address *src, 
 				    struct mac_address *dst, int rate_idx);
 
-struct node *init_probability(int num);
+double *init_probability(int num);
 
 
 
