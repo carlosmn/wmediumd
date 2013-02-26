@@ -51,6 +51,7 @@ void fill_prob_matrix(double *aMatrix,double aValue);
 void print_prob_matrix (double *aMatrix);
 
 double generate_random_double();
+int find_pos_by_mac_address(struct mac_address *addr);
 double find_prob_by_addrs_and_rate (double *aMatrix,struct mac_address *src, 
 				    struct mac_address *dst, int rate_idx);
 

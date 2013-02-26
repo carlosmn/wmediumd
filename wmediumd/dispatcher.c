@@ -22,7 +22,27 @@ static long int processed_size;
 
 static void *s_ctl;
 
-struct sockaddr *ip_addr; /* IP address table */
+struct in_addr *ip_addr; /* IP address table */
+
+int set_ip(char *ptr, ssize_t len, struct in_addr *in_addr)
+{
+	size_t minlen = strlen("HELLO XX:XX:XX:XX:XX:XX\n");
+	size_t hellolen = strlen("HELLO ");
+
+	if (len < minlen) {
+		fprintf(stderr, "short packet");
+		return -1;
+	}
+
+	ptr[minlen] = '\0'; /* bit of a hack for the next thing to work */
+	struct mac_address mac = string_to_mac_address(ptr);
+
+	int pos = find_pos_by_mac_address(&mac);
+	struct in_addr *addr = &ip_addr[pos];
+	addr->s_addr = in_addr->s_addr;
+
+	return 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -77,6 +97,7 @@ int main(int argc, char **argv)
 
 		if (!memcmp(buf, "HELLO", strlen("HELLO"))) {
 			/* associate this IP with the MAC in the message */
+			set_ip(buf, len, &from.sin_addr);
 		}
 
 		if (!memcmp(buf, "MSG", strlen("MSG"))) {
