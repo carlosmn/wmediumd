@@ -22,6 +22,8 @@ static long int processed_size;
 
 static void *s_ctl;
 
+struct sockaddr *ip_addr; /* IP address table */
+
 int main(int argc, char **argv)
 {
 	int sock;
@@ -29,6 +31,13 @@ int main(int argc, char **argv)
 
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
+
+	/* Allocate the IP table */
+	ip_addr = malloc(sizeof(struct sockaddr) * size);
+	if (!ip_addr) {
+		perror("ip_addr");
+		return EXIT_FAILURE;
+	}
 
 	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("socket");
