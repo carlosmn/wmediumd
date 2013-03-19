@@ -15,6 +15,8 @@ double *prob_matrix = NULL;
 int size = 0;
 struct jammer_cfg jam_cfg;
 
+extern int array_size;
+
 /* Performance statistics */
 static struct timeval tv;
 static long int processed;
@@ -23,6 +25,8 @@ static long int processed_size;
 static void *s_ctl;
 
 struct in_addr *ip_addr; /* IP address table */
+static int sock;
+
 
 int set_ip(char *ptr, ssize_t len, struct in_addr *in_addr)
 {
@@ -44,9 +48,71 @@ int set_ip(char *ptr, ssize_t len, struct in_addr *in_addr)
 	return 0;
 }
 
+int find_pos_by_ip(struct in_addr *in_addr) {
+
+	int i=0;
+
+	void * ptr = ip_addr;
+	while(memcmp(ptr, in_addr, sizeof(struct in_addr)) && i < array_size)
+	{
+		i++;
+		ptr = ptr + sizeof(struct in_addr);
+	}
+
+	return ((i >= array_size) ?  -1 :  i);
+}
+
+int inline send_msg(const struct in_addr *in_addr, const unsigned char *msg, ssize_t len)
+{
+	ssize_t ret;
+
+	if ((ret = sendto(sock, msg, len, 0, (struct sockaddr *) in_addr, sizeof(struct in_addr))) < 0) {
+		perror("sendto");
+		return -1;
+	}
+
+	return 0;
+}
+
+int relay_msg(const unsigned char *ptr, ssize_t len, struct in_addr *in_addr)
+{
+	int pos, i;
+	double loss, closs;
+	const unsigned char *msg;
+	struct mac_address *from_mac;
+
+	/* figure out who sent us this packet */
+	if ((pos = find_pos_by_ip(in_addr)) < 0)
+		return -1;
+
+	/* and what its MAC address is */
+	if ((from_mac = get_mac_address(pos)) == NULL) {
+		fprintf(stderr, "failed to get MAC address for pos %d\n", pos);
+		return -1;
+	}
+
+	msg = ptr + strlen("MSG ");
+	len -= strlen("MSG ");
+	loss = drand48();
+	/* for each pair of addresses, find the loss at rate 0 and
+	 * compare against the random value */
+
+	for (i = 0; i < array_size; i++) {
+		struct mac_address *to_mac = get_mac_address(i);
+		closs = find_prob_by_addrs_and_rate(prob_matrix, from_mac, to_mac, 0);
+
+		/* better luck next time */
+		if (closs > loss)
+			continue;
+
+		send_msg(&ip_addr[i], msg, len);
+	}
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
-	int sock;
 	struct sockaddr_in addr;
 
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
@@ -74,6 +140,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	srand(15); /* it's all pseudo-random anyway */
 	while (1) {
 		unsigned char buf[2048];
 		struct sockaddr_in from;
@@ -100,8 +167,9 @@ int main(int argc, char **argv)
 			set_ip(buf, len, &from.sin_addr);
 		}
 
-		if (!memcmp(buf, "MSG", strlen("MSG"))) {
+		if (!memcmp(buf, "MSG", strlen("MSG")) && len > strlen("MSG ")) {
 			/* rand() and send the messages we need to */
+			relay_msg(buf, len, &from.sin_addr);
 		}
 	}
 }

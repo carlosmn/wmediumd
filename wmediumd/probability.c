@@ -29,7 +29,7 @@
 #include "probability.h"
 #include "ieee80211.h"
 
-static int array_size;
+int array_size;
 static size_t node_size;
 static struct mac_address *indexer;
 
