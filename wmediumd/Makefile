@@ -56,7 +56,7 @@ relayer: relayer.o
 	$(CC) -o $@ relayer.o -lzmq
 
 test: test.o
-	$(CC) -o $@ test.o mac_address.o -lzmq
+	$(CC) -o $@ test.o mac_address.o
 
 dispatcher: dispatcher.o $(OBJECTS)
 	$(CC) -o $@ dispatcher.o $(OBJECTS) $(LDFLAGS)
