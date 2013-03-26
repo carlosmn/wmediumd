@@ -24,26 +24,36 @@ static long int processed_size;
 
 static void *s_ctl;
 
-struct in_addr *ip_addr; /* IP address table */
+struct sockaddr_in *ip_addr; /* IP address table */
 static int sock;
 
 
-int set_ip(char *ptr, ssize_t len, struct in_addr *in_addr)
+int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 {
+	char buf[64];
 	size_t minlen = strlen("HELLO XX:XX:XX:XX:XX:XX\n");
-	size_t hellolen = strlen("HELLO ");
+	char *sp;
 
 	if (len < minlen) {
 		fprintf(stderr, "short packet");
 		return -1;
 	}
 
-	ptr[minlen] = '\0'; /* bit of a hack for the next thing to work */
-	struct mac_address mac = string_to_mac_address(ptr);
+	size_t hellolen = strlen("HELLO ");
+	size_t maclen = strlen("XX:XX:XX:XX:XX:XX");
+	memcpy(buf, ptr + hellolen, maclen);
+	buf[maclen] = '\0';
 
+	struct mac_address mac = string_to_mac_address(ptr);
 	int pos = find_pos_by_mac_address(&mac);
-	struct in_addr *addr = &ip_addr[pos];
-	addr->s_addr = in_addr->s_addr;
+	struct sockaddr_in *addr = &ip_addr[pos];
+	memcpy(addr, sockaddr, sizeof(struct sockaddr_in));
+
+	sp = memchr(ptr + hellolen, '\n', len);
+	if (!sp) {
+		fprintf(stderr, "no LF after MAC");
+		return -1;
+	}
 
 	return 0;
 }
@@ -74,7 +84,7 @@ int inline send_msg(const struct in_addr *in_addr, const unsigned char *msg, ssi
 	return 0;
 }
 
-int relay_msg(const unsigned char *ptr, ssize_t len, struct in_addr *in_addr)
+int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 {
 	int pos, i;
 	double loss, closs;
@@ -82,7 +92,7 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct in_addr *in_addr)
 	struct mac_address *from_mac;
 
 	/* figure out who sent us this packet */
-	if ((pos = find_pos_by_ip(in_addr)) < 0)
+	if ((pos = find_pos_by_ip(&sockaddr->sin_addr)) < 0)
 		return -1;
 
 	/* and what its MAC address is */
@@ -105,7 +115,7 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct in_addr *in_addr)
 		if (closs > loss)
 			continue;
 
-		send_msg(&ip_addr[i], msg, len);
+		send_msg(&ip_addr[i].sin_addr, msg, len);
 	}
 
 	return 0;
@@ -119,7 +129,7 @@ int main(int argc, char **argv)
 	load_config("dispatcher-config.cfg");
 
 	/* Allocate the IP table */
-	ip_addr = malloc(sizeof(struct sockaddr) * size);
+	ip_addr = malloc(sizeof(struct sockaddr_in) * size);
 	if (!ip_addr) {
 		perror("ip_addr");
 		return EXIT_FAILURE;
@@ -164,12 +174,12 @@ int main(int argc, char **argv)
 
 		if (!memcmp(buf, "HELLO", strlen("HELLO"))) {
 			/* associate this IP with the MAC in the message */
-			set_ip(buf, len, &from.sin_addr);
+			set_ip(buf, len, &from);
 		}
 
 		if (!memcmp(buf, "MSG", strlen("MSG")) && len > strlen("MSG ")) {
 			/* rand() and send the messages we need to */
-			relay_msg(buf, len, &from.sin_addr);
+			relay_msg(buf, len, &from);
 		}
 	}
 }
