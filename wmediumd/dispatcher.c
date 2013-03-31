@@ -22,9 +22,12 @@ static struct timeval tv;
 static long int processed;
 static long int processed_size;
 
-static void *s_ctl;
+struct peer {
+	struct sockaddr_in addr;
+	int active;
+};
 
-struct sockaddr_in *ip_addr; /* IP address table */
+static struct peer *peers;
 static int sock;
 
 
@@ -35,7 +38,7 @@ int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 	char *sp;
 
 	if (len < minlen) {
-		fprintf(stderr, "short packet");
+		fprintf(stderr, "short packet, %dz insead of >%uz", len, minlen);
 		return -1;
 	}
 
@@ -44,10 +47,11 @@ int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 	memcpy(buf, ptr + hellolen, maclen);
 	buf[maclen] = '\0';
 
-	struct mac_address mac = string_to_mac_address(ptr);
+	struct mac_address mac = string_to_mac_address(buf);
 	int pos = find_pos_by_mac_address(&mac);
-	struct sockaddr_in *addr = &ip_addr[pos];
-	memcpy(addr, sockaddr, sizeof(struct sockaddr_in));
+	struct peer *peer = &peers[pos];
+	peer->active = 1;
+	memcpy(&peer->addr, sockaddr, sizeof(struct sockaddr_in));
 
 	sp = memchr(ptr + hellolen, '\n', len);
 	if (!sp) {
@@ -55,18 +59,17 @@ int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 		return -1;
 	}
 
+	puts("registered one");
 	return 0;
 }
 
-int find_pos_by_ip(struct in_addr *in_addr) {
+int find_pos_by_ip(struct in_addr *in_addr)
+{
+	int i;
 
-	int i=0;
-
-	void * ptr = ip_addr;
-	while(memcmp(ptr, in_addr, sizeof(struct in_addr)) && i < array_size)
-	{
-		i++;
-		ptr = ptr + sizeof(struct in_addr);
+	for (i = 0; i < array_size; i++) {
+		if (!memcmp(in_addr, &peers[i].addr.sin_addr, sizeof(struct in_addr)))
+			break;
 	}
 
 	return ((i >= array_size) ?  -1 :  i);
@@ -92,8 +95,10 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockadd
 	struct mac_address *from_mac;
 
 	/* figure out who sent us this packet */
-	if ((pos = find_pos_by_ip(&sockaddr->sin_addr)) < 0)
+	if ((pos = find_pos_by_ip(&sockaddr->sin_addr)) < 0) {
+		fprintf(stderr, "received message from unknown source\n");
 		return -1;
+	}
 
 	/* and what its MAC address is */
 	if ((from_mac = get_mac_address(pos)) == NULL) {
@@ -112,10 +117,10 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockadd
 		closs = find_prob_by_addrs_and_rate(prob_matrix, from_mac, to_mac, 0);
 
 		/* better luck next time */
-		if (closs > loss)
+		if (closs > loss && peers[i].active)
 			continue;
 
-		send_msg(&ip_addr[i].sin_addr, msg, len);
+		send_msg(&peers[i].addr.sin_addr, msg, len);
 	}
 
 	return 0;
@@ -128,9 +133,9 @@ int main(int argc, char **argv)
 	memset(&jam_cfg, 0, sizeof(jam_cfg));
 	load_config("dispatcher-config.cfg");
 
-	/* Allocate the IP table */
-	ip_addr = malloc(sizeof(struct sockaddr_in) * size);
-	if (!ip_addr) {
+	/* Allocate the peer table */
+	peers = calloc(size, sizeof(struct peer));
+	if (!peers) {
 		perror("ip_addr");
 		return EXIT_FAILURE;
 	}
@@ -159,6 +164,7 @@ int main(int argc, char **argv)
 		ssize_t len;
 
 		fromlen = sizeof(from);
+		memset(&from, 0, sizeof(from));
 		len = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &from, &fromlen);
 		if (len < 0) {
 			perror("recvmsg");
