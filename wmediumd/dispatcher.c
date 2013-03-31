@@ -63,23 +63,23 @@ int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 	return 0;
 }
 
-int find_pos_by_ip(struct in_addr *in_addr)
+int find_pos_by_addr(struct sockaddr_in *in_addr)
 {
 	int i;
 
 	for (i = 0; i < array_size; i++) {
-		if (!memcmp(in_addr, &peers[i].addr.sin_addr, sizeof(struct in_addr)))
+		if (!memcmp(in_addr, &peers[i].addr, sizeof(struct in_addr)))
 			break;
 	}
 
 	return ((i >= array_size) ?  -1 :  i);
 }
 
-int inline send_msg(const struct in_addr *in_addr, const unsigned char *msg, ssize_t len)
+int inline send_msg(const struct sockaddr_in *sin, const unsigned char *msg, ssize_t len)
 {
 	ssize_t ret;
 
-	if ((ret = sendto(sock, msg, len, 0, (struct sockaddr *) in_addr, sizeof(struct in_addr))) < 0) {
+	if ((ret = sendto(sock, msg, len, 0, (struct sockaddr *) sin, sizeof(struct sockaddr_in))) < 0) {
 		perror("sendto");
 		return -1;
 	}
@@ -95,7 +95,7 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockadd
 	struct mac_address *from_mac;
 
 	/* figure out who sent us this packet */
-	if ((pos = find_pos_by_ip(&sockaddr->sin_addr)) < 0) {
+	if ((pos = find_pos_by_addr(sockaddr)) < 0) {
 		fprintf(stderr, "received message from unknown source\n");
 		return -1;
 	}
@@ -117,10 +117,10 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockadd
 		closs = find_prob_by_addrs_and_rate(prob_matrix, from_mac, to_mac, 0);
 
 		/* better luck next time */
-		if (closs > loss && peers[i].active)
+		if (!peers[i].active || closs > loss)
 			continue;
 
-		send_msg(&peers[i].addr.sin_addr, msg, len);
+		send_msg(&peers[i].addr, msg, len);
 	}
 
 	return 0;
