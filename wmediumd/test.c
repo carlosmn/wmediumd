@@ -50,6 +50,34 @@ void setup_sock()
 	freeaddrinfo(result);
 }
 
+void say_hello()
+{
+	char buf[64];
+	ssize_t sent, len;
+
+	sprintf(buf, "HELLO %s\n", src_mac);
+	if (send(sock, buf, strlen(buf), 0) < 0) {
+		perror("hello");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void loop() NORETURN;
+void loop()
+{
+	const char *data = "MSG foo!";
+	size_t len = strlen(data);
+
+	time = time ? time : 1;
+
+	while (1) {
+		send(sock, data, len, 0);
+		sleep(time);
+	}
+}
+
+
+int main(int argc, char **argv) NORETURN;
 int main(int argc, char **argv)
 {
 	int c;
@@ -75,6 +103,6 @@ int main(int argc, char **argv)
 		die_help();
 
 	setup_sock();
-
-	return 0;
+	say_hello();
+	loop();
 }
