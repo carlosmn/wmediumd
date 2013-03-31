@@ -66,12 +66,16 @@ void loop() NORETURN;
 void loop()
 {
 	const char *data = "MSG foo!";
+	const char buffer[1024];
 	size_t len = strlen(data);
 
 	time = time < 0 ? 1 : time;
 
 	while (1) {
 		send(sock, data, len, 0);
+		if (recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT) > -1) {
+			puts("I gots me a message");
+		}
 		sleep(time);
 	}
 }
