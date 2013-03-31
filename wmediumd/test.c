@@ -11,7 +11,7 @@
 #define NORETURN __attribute__((noreturn))
 
 static char *dst_mac, *src_mac;
-static int time, sock;
+static int sock, time = -1;
 
 void die_help() NORETURN;
 void die_help()
@@ -68,7 +68,7 @@ void loop()
 	const char *data = "MSG foo!";
 	size_t len = strlen(data);
 
-	time = time ? time : 1;
+	time = time < 0 ? 1 : time;
 
 	while (1) {
 		send(sock, data, len, 0);
@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "s:d:")) != -1) {
+	while ((c = getopt(argc, argv, "s:d:t:")) != -1) {
 		switch (c) {
 		case 's':
 			dst_mac = strdup(optarg);
