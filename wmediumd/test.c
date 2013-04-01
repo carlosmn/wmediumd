@@ -7,11 +7,15 @@
 #include <netdb.h> /* getaddrinfo */
 
 #include <unistd.h> /* getopt */
+#include <signal.h>
+#include <time.h>
 
 #define NORETURN __attribute__((noreturn))
 
-static char *dst_mac, *src_mac;
-static int sock, time = -1;
+static char *src_mac;
+static int sock, sleep_time = -1;
+static size_t received;
+static time_t start;
 
 void die_help() NORETURN;
 void die_help()
@@ -62,21 +66,40 @@ void say_hello()
 	}
 }
 
+void on_int(int sig)
+{
+	time_t end, elapsed;
+	int persec;
+
+	time(&end);
+	elapsed = end - start;
+
+	persec = received / elapsed;
+
+	printf("Received %zu bytes in %zu seconds, %zu bytes/sec\n", received, elapsed, persec);
+	exit(EXIT_SUCCESS);
+}
+
 void loop() NORETURN;
 void loop()
 {
-	const char *data = "MSG foo!";
-	const char buffer[1024];
-	size_t len = strlen(data);
+	char data[8*1024];
+	char buffer[8*1024];
+	size_t len = sizeof(data);
+	ssize_t ret;
 
-	time = time < 0 ? 1 : time;
+	/* so it has MSG, we send the whole 1k */
+	memcpy(data, "MSG foo", strlen("MSG foo"));
+	sleep_time = sleep_time < 0 ? 1 : sleep_time;
+
+	time(&start);
 
 	while (1) {
 		send(sock, data, len, 0);
-		if (recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT) > -1) {
-			puts("I gots me a message");
-		}
-		sleep(time);
+		if ((ret = recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT)) > -1)
+			received += ret;
+
+		sleep(sleep_time);
 	}
 }
 
@@ -89,13 +112,10 @@ int main(int argc, char **argv)
 	while ((c = getopt(argc, argv, "s:d:t:")) != -1) {
 		switch (c) {
 		case 's':
-			dst_mac = strdup(optarg);
-			break;
-		case 'd':
 			src_mac = strdup(optarg);
 			break;
 		case 't':
-			time = atoi(optarg);
+			sleep_time = atoi(optarg);
 			break;
 		default:
 			die_help();
@@ -103,9 +123,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!dst_mac && !src_mac)
+	if (!src_mac)
 		die_help();
 
+	signal(SIGINT, on_int);
 	setup_sock();
 	say_hello();
 	loop();
