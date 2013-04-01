@@ -20,7 +20,7 @@ static time_t start;
 void die_help() NORETURN;
 void die_help()
 {
-	fprintf(stderr, "usage: -s <src> -d <dst>\n");
+	fprintf(stderr, "usage: -s <src> [-t <delay>]\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "s:d:t:")) != -1) {
+	while ((c = getopt(argc, argv, "s:t:")) != -1) {
 		switch (c) {
 		case 's':
 			src_mac = strdup(optarg);
