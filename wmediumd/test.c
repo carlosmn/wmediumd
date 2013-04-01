@@ -64,6 +64,9 @@ void say_hello()
 		perror("hello");
 		exit(EXIT_FAILURE);
 	}
+
+	/* Hack to let many processes say hello and start hammering the dispatcher */
+	sleep(1);
 }
 
 void on_int(int sig)
@@ -76,7 +79,7 @@ void on_int(int sig)
 
 	persec = received / elapsed;
 
-	printf("Received %zu bytes in %zu seconds, %zu bytes/sec\n", received, elapsed, persec);
+	printf("Received %zu bytes in %zu seconds, %zu bytes/sec for %s\n", received, elapsed, persec, src_mac);
 	exit(EXIT_SUCCESS);
 }
 
@@ -95,7 +98,7 @@ void loop()
 	time(&start);
 
 	while (1) {
-		send(sock, data, len, 0);
+		send(sock, data, len, MSG_DONTWAIT);
 		if ((ret = recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT)) > -1)
 			received += ret;
 
