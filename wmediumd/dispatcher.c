@@ -117,7 +117,7 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockadd
 		closs = find_prob_by_addrs_and_rate(prob_matrix, from_mac, to_mac, 0);
 
 		/* better luck next time */
-		if (!peers[i].active || closs > loss)
+		if (!peers[i].active || closs < 0 || closs > loss)
 			continue;
 
 		send_msg(&peers[i].addr, msg, len);
