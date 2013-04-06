@@ -57,22 +57,19 @@ void setup_sock()
 void on_int(int sig)
 {
 	time_t end, elapsed;
-	int persec;
 
 	time(&end);
 	elapsed = end - start;
 
-	persec = received / elapsed;
-
-	printf("Received %zu bytes in %zu seconds, %zu bytes/sec for %s\n", received, elapsed, persec, src_mac);
+	printf("%zu %zu %s\n", received, elapsed, src_mac);
 	exit(EXIT_SUCCESS);
 }
 
 void loop() NORETURN;
 void loop()
 {
-	char data[8*1024];
-	char buffer[8*1024];
+	char data[2*1024];
+	char buffer[2*1024];
 	size_t len = sizeof(data);
 	ssize_t ret;
 
@@ -86,7 +83,8 @@ void loop()
 		if ((ret = recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT)) > -1)
 			received += ret;
 
-		sleep(sleep_time);
+		//sleep(sleep_time);
+		usleep(100);
 	}
 }
 
