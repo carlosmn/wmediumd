@@ -54,21 +54,6 @@ void setup_sock()
 	freeaddrinfo(result);
 }
 
-void say_hello()
-{
-	char buf[64];
-	ssize_t sent, len;
-
-	sprintf(buf, "HELLO %s\n", src_mac);
-	if (send(sock, buf, strlen(buf), 0) < 0) {
-		perror("hello");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Hack to let many processes say hello and start hammering the dispatcher */
-	sleep(1);
-}
-
 void on_int(int sig)
 {
 	time_t end, elapsed;
@@ -91,8 +76,7 @@ void loop()
 	size_t len = sizeof(data);
 	ssize_t ret;
 
-	/* so it has MSG, we send the whole 1k */
-	memcpy(data, "MSG foo", strlen("MSG foo"));
+	sprintf(data, "MSG %s foo", src_mac);
 	sleep_time = sleep_time < 0 ? 1 : sleep_time;
 
 	time(&start);
@@ -131,6 +115,5 @@ int main(int argc, char **argv)
 
 	signal(SIGINT, on_int);
 	setup_sock();
-	say_hello();
 	loop();
 }

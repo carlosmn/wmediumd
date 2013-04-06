@@ -31,20 +31,19 @@ static struct peer *peers;
 static int sock;
 
 
-int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
+unsigned char *set_ip(int *pos_out, const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 {
 	char buf[64];
-	size_t minlen = strlen("HELLO XX:XX:XX:XX:XX:XX\n");
-	char *sp;
+	size_t minlen = strlen("XX:XX:XX:XX:XX:XX\n");
+	unsigned char *sp;
 
 	if (len < minlen) {
-		fprintf(stderr, "short packet, %dz insead of >%uz", len, minlen);
-		return -1;
+		fprintf(stderr, "short packet, %zd insead of >%zu\n", len, minlen);
+		return NULL;
 	}
 
-	size_t hellolen = strlen("HELLO ");
 	size_t maclen = strlen("XX:XX:XX:XX:XX:XX");
-	memcpy(buf, ptr + hellolen, maclen);
+	memcpy(buf, ptr, maclen);
 	buf[maclen] = '\0';
 
 	struct mac_address mac = string_to_mac_address(buf);
@@ -53,14 +52,15 @@ int set_ip(const char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 	peer->active = 1;
 	memcpy(&peer->addr, sockaddr, sizeof(struct sockaddr_in));
 
-	sp = memchr(ptr + hellolen, '\n', len);
+	sp = memchr(ptr + maclen, '\n', len);
 	if (!sp) {
-		fprintf(stderr, "no LF after MAC");
-		return -1;
+		fprintf(stderr, "no LF after MAC\n");
+		return NULL;
 	}
 
-	puts("registered one");
-	return 0;
+	//printf("registered %s at %d\n", buf, pos);
+	*pos_out = pos;
+	return sp + 1;
 }
 
 int find_pos_by_addr(struct sockaddr_in *in_addr)
@@ -75,7 +75,7 @@ int find_pos_by_addr(struct sockaddr_in *in_addr)
 	return ((i >= array_size) ?  -1 :  i);
 }
 
-int inline send_msg(const struct sockaddr_in *sin, const unsigned char *msg, ssize_t len)
+int inline send_msg(const struct sockaddr_in *sin, const unsigned char *msg, size_t len)
 {
 	ssize_t ret;
 
@@ -87,18 +87,11 @@ int inline send_msg(const struct sockaddr_in *sin, const unsigned char *msg, ssi
 	return 0;
 }
 
-int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
+int relay_msg(const unsigned char *ptr, size_t len, int pos)
 {
-	int pos, i;
+	int i;
 	double loss, closs;
-	const unsigned char *msg;
 	struct mac_address *from_mac;
-
-	/* figure out who sent us this packet */
-	if ((pos = find_pos_by_addr(sockaddr)) < 0) {
-		fprintf(stderr, "received message from unknown source\n");
-		return -1;
-	}
 
 	/* and what its MAC address is */
 	if ((from_mac = get_mac_address(pos)) == NULL) {
@@ -106,21 +99,23 @@ int relay_msg(const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockadd
 		return -1;
 	}
 
-	msg = ptr + strlen("MSG ");
-	len -= strlen("MSG ");
 	loss = drand48();
 	/* for each pair of addresses, find the loss at rate 0 and
 	 * compare against the random value */
 
 	for (i = 0; i < array_size; i++) {
+		if (i == pos)
+			continue;
+
 		struct mac_address *to_mac = get_mac_address(i);
 		closs = find_prob_by_addrs_and_rate(prob_matrix, from_mac, to_mac, 0);
 
+		//printf("peers[i].active %d, pos %d, i %d\n", peers[i].active, pos, i);
 		/* better luck next time */
-		if (!peers[i].active || closs < 0 || closs > loss)
+		if (!peers[i].active || closs > loss)
 			continue;
 
-		send_msg(&peers[i].addr, msg, len);
+		send_msg(&peers[i].addr, ptr, len);
 	}
 
 	return 0;
@@ -157,11 +152,14 @@ int main(int argc, char **argv)
 
 	srand(15); /* it's all pseudo-random anyway */
 	while (1) {
-		unsigned char buf[2048];
+		size_t msg_pfx_len = strlen("MSG ");
+		unsigned char buf[8*1024], *ptr;
 		struct sockaddr_in from;
 		struct msghdr msg;
 		socklen_t fromlen;
 		ssize_t len;
+		int pos;
+
 
 		fromlen = sizeof(from);
 		memset(&from, 0, sizeof(from));
@@ -171,21 +169,17 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
-		/*
-		 * Figure out if this is a hello packet or a message packet. Each
-		 * would get their own function. A hello packet adds the data we
-		 * need such as IP to a structure. A message packet would go
-		 * through the neighbours and send if necessary.
-		 */
-
-		if (!memcmp(buf, "HELLO", strlen("HELLO"))) {
-			/* associate this IP with the MAC in the message */
-			set_ip(buf, len, &from);
+		if (memcmp(buf, "MSG ", msg_pfx_len)) {
+			fprintf(stderr, "Received invalid message");
+			continue;
 		}
 
-		if (!memcmp(buf, "MSG", strlen("MSG")) && len > strlen("MSG ")) {
-			/* rand() and send the messages we need to */
-			relay_msg(buf, len, &from);
-		}
+		/* Figure out what IP/port this was sent from and store it for the MAC */
+		ptr = set_ip(&pos, buf + msg_pfx_len, len - msg_pfx_len, &from);
+		if (!ptr)
+			continue;
+
+		/* And send the message to the  */
+		relay_msg(ptr, len - (ptr - buf), pos);
 	}
 }
