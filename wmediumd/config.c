@@ -94,7 +94,7 @@ int write_config(char *file, int ifaces, float value)
 	size_t size;
 	config_t cfg;
 	config_setting_t *root, *setting, *group, *array, *list;
-	int i, j, rates = 12;
+	int i, j, rates = 1;
 
 	/*Init tmp file stream*/
 	out = open_memstream(&ptr, &size);
