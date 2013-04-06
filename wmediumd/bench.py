@@ -12,7 +12,7 @@ print("Giving the dispatcher time to set up")
 time.sleep(1)
 
 for i in range(10):
-    mac = "42:00:00:00:0%02d:00" % i
+    mac = "42:00:00:00:%02d:00" % i
     print("Starting test for %s" % mac)
     clients.append(subprocess.Popen(["./test", "-t", "0", "-s", mac]))
 
