@@ -14,7 +14,7 @@
 
 static char *src_mac;
 static int sock, sleep_time = -1;
-static size_t received;
+static size_t received, sent;
 static time_t start;
 
 void die_help() NORETURN;
@@ -62,7 +62,31 @@ void on_int(int sig)
 	elapsed = end - start;
 
 	printf("%zu %zu %s\n", received, elapsed, src_mac);
+	fprintf(stderr, "sent %zu\n", sent);
 	exit(EXIT_SUCCESS);
+}
+
+void inline add_time(struct timeval *out, const struct timeval *start, int usecs)
+{
+	int carry;
+
+	out->tv_usec = start->tv_usec + usecs;
+	carry = out->tv_usec > 1000000;
+
+	out->tv_sec = start->tv_sec + carry;
+}
+
+int inline time_interval(struct timeval *out, const struct timeval *start, const struct timeval *stop)
+{
+	out->tv_sec  = stop->tv_sec  - start->tv_sec;
+	out->tv_usec = stop->tv_usec - start->tv_usec;
+
+	if (out->tv_usec < 0 || out->tv_sec < 0) {
+		out->tv_usec = out->tv_sec = 0;
+		return -1;
+	}
+
+	return 0;
 }
 
 void loop() NORETURN;
@@ -72,19 +96,52 @@ void loop()
 	char buffer[2*1024];
 	size_t len = sizeof(data);
 	ssize_t ret;
+	fd_set rfds;
 
 	sprintf(data, "MSG %s foo", src_mac);
 	sleep_time = sleep_time < 0 ? 1 : sleep_time;
 
+	send(sock, data, len, 0);
+	sleep(1); /* make sure everyone's signed up */
+
 	time(&start);
 
 	while (1) {
-		send(sock, data, len, MSG_DONTWAIT);
-		if ((ret = recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT)) > -1)
-			received += ret;
+		struct timeval tv_start, tv_end, tv;
 
-		//sleep(sleep_time);
-		usleep(100);
+		if (send(sock, data, len, MSG_DONTWAIT) > -1)
+			sent++;
+
+		if (gettimeofday(&tv_start, NULL) < 0) {
+			perror("gettimeofday");
+			exit(EXIT_FAILURE);
+		}
+
+		add_time(&tv_end, &tv_start, 10000);
+		time_interval(&tv, &tv_start, &tv_end);
+
+		while (1) {
+			FD_ZERO(&rfds);
+			FD_SET(sock, &rfds);
+			int selret = select(sock + 1, &rfds, NULL, NULL, &tv);
+			if (selret < 0)
+				perror("select");
+
+			if (selret == 0)
+				break; /* timeout, time to send */
+
+			if (selret) {
+				ret = recv(sock, buffer, sizeof(buffer), MSG_DONTWAIT);
+				if (ret < 0)
+					perror("recv");
+				else
+					received++;
+			}
+
+			gettimeofday(&tv_start, NULL);
+			if (time_interval(&tv, &tv_start, &tv_end) < 0)
+				break;
+		}
 	}
 }
 
