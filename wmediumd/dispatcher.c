@@ -21,6 +21,7 @@ extern int array_size;
 static struct timeval tv;
 static long int processed;
 static long int processed_size;
+static size_t recvd, sent;
 
 struct peer {
 	struct sockaddr_in addr;
@@ -30,6 +31,11 @@ struct peer {
 static struct peer *peers;
 static int sock;
 
+void on_int(int sig)
+{
+	fprintf(stderr, "dispatcher, recvd %zu, sent %zu\n", recvd, sent);
+	exit(EXIT_SUCCESS);
+}
 
 unsigned char *set_ip(int *pos_out, const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
 {
@@ -49,8 +55,8 @@ unsigned char *set_ip(int *pos_out, const unsigned char *ptr, ssize_t len, struc
 	struct mac_address mac = string_to_mac_address(buf);
 	int pos = find_pos_by_mac_address(&mac);
 	struct peer *peer = &peers[pos];
-	peer->active = 1;
 	memcpy(&peer->addr, sockaddr, sizeof(struct sockaddr_in));
+	peer->active = 1;
 
 	sp = memchr(ptr + maclen, '\n', len);
 	if (!sp) {
@@ -84,6 +90,7 @@ int inline send_msg(const struct sockaddr_in *sin, const unsigned char *msg, siz
 		return -1;
 	}
 
+	sent++;
 	return 0;
 }
 
@@ -150,6 +157,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	signal(SIGINT, on_int);
 	srand(15); /* it's all pseudo-random anyway */
 	while (1) {
 		size_t msg_pfx_len = strlen("MSG ");
@@ -179,6 +187,7 @@ int main(int argc, char **argv)
 		if (!ptr)
 			continue;
 
+		recvd++;
 		/* And send the message to the  */
 		relay_msg(ptr, len - (ptr - buf), pos);
 	}

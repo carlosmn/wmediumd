@@ -15,14 +15,14 @@ time.sleep(1)
 for i in range(4):
     mac = "42:00:00:00:%02d:00" % i # wmediumd uses decimal for some reason
     print("Starting test for %s" % mac)
-    clients.append(subprocess.Popen(["./test", "-t", "0", "-s", mac], stdout=subprocess.PIPE))
+    clients.append(subprocess.Popen(["./test", "-t", "1", "-s", mac], stdout=subprocess.PIPE))
 
 time.sleep(bench_time)
 
 for client in clients:
     client.send_signal(signal.SIGINT)
 
-dispatcher.kill()
+dispatcher.send_signal(signal.SIGINT);
 
 aggregate = 0
 for client in clients:
@@ -33,7 +33,7 @@ for client in clients:
 
     aggregate += amt
 
-    print("Client %s @ %d" % (mac, amt/time))
+    print("Client %s %d @ %d/s" % (mac, amt, amt/time))
 
-aggregate_mb = (aggregate / bench_time) / (1024.0*1024.0)
-print("Aggregate speed %f MB/s (%f Mbps)" % (aggregate_mb, aggregate_mb * 8))
+aggregate = (aggregate / bench_time)
+print("Aggregate speed %f pkts/s" % (aggregate))
