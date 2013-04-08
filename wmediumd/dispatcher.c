@@ -161,12 +161,14 @@ int main(int argc, char **argv)
 	srand(15); /* it's all pseudo-random anyway */
 	while (1) {
 		size_t msg_pfx_len = strlen("MSG ");
+		size_t ping_pfx_len = strlen("PING ");
+		size_t skip;
 		unsigned char buf[8*1024], *ptr;
 		struct sockaddr_in from;
 		struct msghdr msg;
 		socklen_t fromlen;
 		ssize_t len;
-		int pos;
+		int pos, is_message;
 
 
 		fromlen = sizeof(from);
@@ -177,14 +179,20 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
-		if (memcmp(buf, "MSG ", msg_pfx_len)) {
+		if (!memcmp(buf, "MSG ", msg_pfx_len)) {
+			is_message = 1;
+			skip = msg_pfx_len;
+		} else if (!memcmp(buf, "PING ", ping_pfx_len)) {
+			is_message = 0;
+			skip = ping_pfx_len;
+		} else {
 			fprintf(stderr, "Received invalid message");
 			continue;
 		}
 
 		/* Figure out what IP/port this was sent from and store it for the MAC */
-		ptr = set_ip(&pos, buf + msg_pfx_len, len - msg_pfx_len, &from);
-		if (!ptr)
+		ptr = set_ip(&pos, buf + skip, len - skip, &from);
+		if (!ptr || !is_message)
 			continue;
 
 		recvd++;

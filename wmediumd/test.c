@@ -97,12 +97,13 @@ void loop()
 	ssize_t ret;
 	fd_set rfds;
 
-	sprintf(data, "MSG %s foo", src_mac);
+	sprintf(data, "PING %s", src_mac);
 	sleep_time = sleep_time < 0 ? 1 : sleep_time;
 
 	send(sock, data, len, 0);
 	sleep(1); /* make sure everyone's signed up */
 
+	sprintf(data, "MSG %s foo", src_mac);
 	time(&start);
 
 	while (1) {
