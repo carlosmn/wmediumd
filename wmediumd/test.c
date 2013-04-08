@@ -61,8 +61,7 @@ void on_int(int sig)
 	time(&end);
 	elapsed = end - start;
 
-	printf("%zu %zu %s\n", received, elapsed, src_mac);
-	fprintf(stderr, "sent %zu\n", sent);
+	printf("%zu %zu %zu %s\n", sent, received, elapsed, src_mac);
 	exit(EXIT_SUCCESS);
 }
 
