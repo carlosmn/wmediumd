@@ -50,10 +50,10 @@ OBJECTS=probability.o mac_address.o config.o
 all: wmediumd relayer dispatcher test write-config
 
 wmediumd: wmediumd.o $(OBJECTS)
-	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS) -lzmq
+	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
 
-relayer: relayer.o
-	$(CC) -o $@ relayer.o -lzmq
+#relayer: relayer.o
+#	$(CC) -o $@ relayer.o -lzmq
 
 test: test.o
 	$(CC) -o $@ test.o mac_address.o

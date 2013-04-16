@@ -29,7 +29,6 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
-#include <zmq.h>
 
 #include "wmediumd.h"
 #include "probability.h"
@@ -47,9 +46,6 @@ int running = 0;
 struct jammer_cfg jam_cfg;
 double *prob_matrix;
 int size;
-
-static void *zsock;
-static void *context;
 
 static int received = 0;
 static int sent = 0;
@@ -189,34 +185,6 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 		/*received signal level*/
 		int signal = get_signal_by_rate(rate_idx);
 
-		zmq_msg_t msg;
-		size_t size = sizeof(struct mac_address);
-
-		/* First send the source */
-		zmq_msg_init_size(&msg, size);
-		memcpy(zmq_msg_data(&msg), src, size);
-		zmq_send(zsock, &msg, ZMQ_SNDMORE);
-		zmq_msg_close(&msg);
-
-		/* Then the destination */
-		zmq_msg_init_size(&msg, size);
-		memcpy(zmq_msg_data(&msg), dst, size);
-		zmq_send(zsock, &msg, ZMQ_SNDMORE);
-
-		zmq_msg_init_size(&msg, data_len);
-		/* TODO: See if we can zero-copy this */
-		memcpy(zmq_msg_data(&msg), data, data_len);
-		zmq_send(zsock, &msg, 0);
-
-		zmq_recv(zsock, &msg, 0);
-
-		if (strcmp("OK", zmq_msg_data(&msg))) {
-			printf("Oops: %s\n", zmq_msg_data(&msg));
-		} else {
-			puts("OK");
-		}
-
-		zmq_msg_close(&msg);
 		send_cloned_frame_msg(dst,data,data_len,rate_idx,signal);
 		sent++;
 		return 1;
