@@ -56,6 +56,9 @@ static int sent = 0;
 static int dropped = 0;
 static int acked = 0;
 
+static char *dispatcher;
+static int port = 5555;
+
 
 /*
  * 	Generates a random double value
@@ -173,6 +176,8 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 	double prob_per_link = find_prob_by_addrs_and_rate(prob_matrix,
 							   src,dst, rate_idx);
 	double random_double = generate_random_double();
+
+	printf("data_len %d\n", data_len);
 
 	if (random_double < prob_per_link) {
 		printf("dropped\n");
@@ -339,6 +344,8 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	/* generic netlink header*/
 	struct genlmsghdr *gnlh = nlmsg_data(nlh);
 
+	printf("got a netlink message, %d\n", gnlh->cmd);
+
 	if(gnlh->cmd == HWSIM_CMD_FRAME) {
 		/* we get the attributes*/
 		genlmsg_parse(nlh, 0, attrs, HWSIM_ATTR_MAX, NULL);
@@ -447,13 +454,12 @@ void init_netlink()
 void print_help(int exval)
 {
 	printf("wmediumd v%s - a wireless medium simulator\n", VERSION_STR);
-	printf("wmediumd [-h] [-V] [-c FILE] [-o FILE]\n\n");
+	printf("wmediumd [-h] [-V] [-d <host>] [-p <port>]\n\n");
 
 	printf("  -h              print this help and exit\n");
 	printf("  -V              print version and exit\n\n");
-
-	printf("  -c FILE         set intput config file\n");
-	printf("  -o FILE         set output config file\n\n");
+	printf("  -d              dispatcher to connect to\n");
+	printf("  -p              dispatcher's port (defaults to 5555)\n");
 
 	exit(exval);
 }
@@ -472,7 +478,7 @@ int main(int argc, char* argv[]) {
 		print_help(EXIT_FAILURE);
 	}
 
-	while((opt = getopt(argc, argv, "hVc:o:")) != -1) {
+	while((opt = getopt(argc, argv, "hVd:p:")) != -1) {
 		switch(opt) {
 		case 'h':
 			print_help(EXIT_SUCCESS);
@@ -482,24 +488,11 @@ int main(int argc, char* argv[]) {
 			       "for mac80211_hwsim\n", VERSION_STR);
 			exit(EXIT_SUCCESS);
 			break;
-		case 'c':
-			printf("Input configuration file: %s\n", optarg);
-			load_config(optarg);
+		case 'd':
+			dispatcher = strdup(optarg);
 			break;
-		case 'o':
-			printf("Output configuration file: %s\n", optarg);
-			printf("How many interfaces are active?\n");
-			scanf("%d",&ifaces);
-			if (ifaces < 2) {
-				printf("active interfaces must be at least 2\n");
-				exit(EXIT_FAILURE);
-			}
-				write_config(optarg, ifaces, 0.0);
-			break;
-		case ':':
-			printf("wmediumd: Error - Option `%c' "
-			       "needs a value\n\n", optopt);
-			print_help(EXIT_FAILURE);
+		case 'p':
+			port = atoi(optarg);
 			break;
 		case '?':
 			printf("wmediumd: Error - No such option:"
@@ -513,7 +506,6 @@ int main(int argc, char* argv[]) {
 	if (optind < argc)
 		print_help(EXIT_FAILURE);
 
-	print_prob_matrix(prob_matrix);
 
 	/*Handle kill signals*/
 	running = 1;
@@ -521,10 +513,6 @@ int main(int argc, char* argv[]) {
 
 	/*init netlink*/
 	init_netlink();
-
-	context  = zmq_init(1);
-	zsock = zmq_socket(context, ZMQ_REQ);
-	zmq_connect(zsock, "ipc:///tmp/hwsim");
 
 	/*Send a register msg to the kernel*/
 	if (send_register_msg()==0)
@@ -541,9 +529,6 @@ int main(int argc, char* argv[]) {
 	free(cb);
 	free(cache);
 	free(family);
-	free(prob_matrix);
-	zmq_close(zsock);
-	zmq_term(context);
 
 	return EXIT_SUCCESS;
 }
