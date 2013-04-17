@@ -47,11 +47,15 @@ struct jammer_cfg jam_cfg;
 double *prob_matrix;
 int size;
 
+static int nl_fd;  /* netlink fd */
+static int disp_fd;   /* dispatcher fd */
+
 static int received = 0;
 static int sent = 0;
 static int dropped = 0;
 static int acked = 0;
 
+static char *mac;
 static char *dispatcher;
 static int port = 5555;
 
@@ -404,6 +408,8 @@ void init_netlink()
 	genl_connect(sock);
 	genl_ctrl_alloc_cache(sock, &cache);
 
+	nl_socket_set_nonblocking(sock);
+	nl_fd = nl_socket_get_fd(sock);
 	family = genl_ctrl_search_by_name(cache, "MAC80211_HWSIM");
 
 	if (!family) {
@@ -412,6 +418,78 @@ void init_netlink()
 	}
 
 	nl_cb_set(cb, NL_CB_MSG_IN, NL_CB_CUSTOM, process_messages_cb, NULL);
+
+}
+
+void init_dispatcher_fd(void)
+{
+	int ret;
+	struct sockaddr_in sin;
+	struct addrinfo *result, *res, hints;
+
+	disp_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (disp_fd < 0) {
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	if ((ret = getaddrinfo("localhost", NULL, &hints, &result)) < 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));
+		exit(EXIT_FAILURE);
+	}
+
+	memcpy(&sin, result->ai_addr, result->ai_addrlen);
+	sin.sin_port = htons(port);
+	if (connect(disp_fd, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+		perror("connect");
+		exit(EXIT_FAILURE);
+	}
+
+	freeaddrinfo(result);
+}
+
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+
+void ping(void)
+{
+	char data[4 + 1 + 17];
+	size_t len = sizeof(data);
+
+	snprintf(data, len, "PING %s", mac);
+	send(disp_fd, data, len, 0);
+}
+
+void main_loop(void)
+{
+	fd_set rfds;
+	int nfds = MAX(nl_fd, disp_fd) + 1;
+	int ret;
+	struct timeval tv;
+
+	while (running) {
+		FD_ZERO(&rfds);
+		FD_SET(nl_fd, &rfds);
+		FD_SET(disp_fd, &rfds);
+
+		/* Max sleep 0.5 secs */
+		tv.tv_sec = 0;
+		tv.tv_usec = 500000;
+
+		/* TODO: see if it makes sense to prefer a different one each time */
+		ret = select(nfds, &rfds, NULL, NULL, &tv);
+		if (FD_ISSET(disp_fd, &rfds)) {
+			/* do receive */
+		} else if (FD_ISSET(nl_fd, &rfds)) {
+			/* receive nl messages until no more data is available */
+			nl_recvmsgs_default(sock);
+		} else {
+			/* We haven't sent any messages in a while, send a ping to the dispatcher */
+			ping();
+		}
+	}
 
 }
 
@@ -428,6 +506,7 @@ void print_help(int exval)
 	printf("  -V              print version and exit\n\n");
 	printf("  -d              dispatcher to connect to\n");
 	printf("  -p              dispatcher's port (defaults to 5555)\n");
+	printf("  -a              address to use as source\n");
 
 	exit(exval);
 }
@@ -462,6 +541,9 @@ int main(int argc, char* argv[]) {
 		case 'p':
 			port = atoi(optarg);
 			break;
+		case 'a':
+			mac = strdup(optarg);
+			break;
 		case '?':
 			printf("wmediumd: Error - No such option:"
 			       " `%c'\n\n", optopt);
@@ -486,10 +568,7 @@ int main(int argc, char* argv[]) {
 	if (send_register_msg()==0)
 		printf("REGISTER SENT!\n");
 
-	/*We wait for incoming msg*/
-	while(running) {
-		nl_recvmsgs_default(sock);
-	}
+	main_loop();
 	
 	/*Free all memory*/
 	free(sock);
