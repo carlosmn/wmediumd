@@ -45,7 +45,7 @@ NLVERSION :=$(shell $(PKG_CONFIG) --print-provides $(NLLIBNAME))
 
 CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig
-OBJECTS=probability.o mac_address.o config.o
+OBJECTS=probability.o mac_address.o config.o proto.o
 
 all: wmediumd relayer dispatcher test write-config
 

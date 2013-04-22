@@ -35,6 +35,7 @@
 #include "mac_address.h"
 #include "ieee80211.h"
 #include "config.h"
+#include "proto.h"
 
 struct nl_sock *sock;
 struct nl_msg *msg;
@@ -118,7 +119,7 @@ out:
  */
 
 int send_cloned_frame_msg(struct mac_address *dst,
-			  char *data, int data_len, int rate_idx, int signal)
+			  const char *data, int data_len, int rate_idx, int signal)
 {
 
 	msg = nlmsg_alloc();
@@ -176,8 +177,6 @@ int send_frame_msg_apply_prob_and_rate(struct mac_address *src,
 	double prob_per_link = find_prob_by_addrs_and_rate(prob_matrix,
 							   src,dst, rate_idx);
 	double random_double = generate_random_double();
-
-	printf("data_len %d\n", data_len);
 
 	if (random_double < prob_per_link) {
 		printf("dropped\n");
@@ -457,15 +456,28 @@ void init_dispatcher_fd(void)
 int recv_and_ack(void)
 {
 	unsigned char buffer[2*1024];
-	ssize_t recvd;
+	ssize_t recvd, to_send;
+	struct wmd_msg msg;
+	int signal;
+
 
 	recvd = recv(disp_fd, buffer, sizeof(buffer), 0);
 	if (recvd < 0) {
 		perror("recv");
+		return -1;
 	}
 
+	/* parse the data */
+	if (parse_msg(&msg, buffer, recvd) < 0)
+		return -1;
+
 	/* send cloned frame to iface */
+	signal = get_signal_by_rate(0); /* dummy */
+	send_cloned_frame_msg(/* our mac address? */ NULL, msg.data, msg.data_len, 0, signal);
+
 	/* send back the ACK */
+	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, mac, msg.src);
+	send(disp_fd, buffer, to_send, 0);
 }
 
 void ping(void)
