@@ -453,6 +453,21 @@ void init_dispatcher_fd(void)
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+/* Get the message from the network and send the ACK */
+int recv_and_ack(void)
+{
+	unsigned char buffer[2*1024];
+	ssize_t recvd;
+
+	recvd = recv(disp_fd, buffer, sizeof(buffer), 0);
+	if (recvd < 0) {
+		perror("recv");
+	}
+
+	/* send cloned frame to iface */
+	/* send back the ACK */
+}
+
 void ping(void)
 {
 	char data[4 + 1 + 17];
@@ -481,7 +496,7 @@ void main_loop(void)
 		/* TODO: see if it makes sense to prefer a different one each time */
 		ret = select(nfds, &rfds, NULL, NULL, &tv);
 		if (FD_ISSET(disp_fd, &rfds)) {
-			/* do receive */
+			recv_and_ack();
 		} else if (FD_ISSET(nl_fd, &rfds)) {
 			/* receive nl messages until no more data is available */
 			nl_recvmsgs_default(sock);
