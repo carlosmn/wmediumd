@@ -6,6 +6,7 @@
 
 struct wmd_msg {
 	char src[18];
+	int ack :1;
 	unsigned long cookie;
 	const char *data;
 	size_t data_len;
