@@ -5,11 +5,14 @@
 #include <stdlib.h>
 
 struct wmd_msg {
+	unsigned int ack :1;
 	char src[18];
-	int ack :1;
 	unsigned long cookie;
+	/* Following two only for MSG */
 	const char *data;
 	size_t data_len;
+	/* Following only for ACK */
+	char dst[18];
 };
 
 int fmt_msg(unsigned char *buf, size_t sz, unsigned long cookie, char *src);

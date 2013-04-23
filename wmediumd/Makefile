@@ -47,7 +47,7 @@ CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig
 OBJECTS=probability.o mac_address.o config.o proto.o
 
-all: wmediumd relayer dispatcher test write-config
+all: wmediumd dispatcher test write-config proto-test
 
 wmediumd: wmediumd.o $(OBJECTS)
 	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
@@ -57,6 +57,9 @@ wmediumd: wmediumd.o $(OBJECTS)
 
 test: test.o
 	$(CC) -o $@ test.o mac_address.o
+
+proto-test: proto-test.o proto.o
+	$(CC) -o $@ proto-test.o proto.o
 
 dispatcher: dispatcher.o $(OBJECTS)
 	$(CC) -o $@ dispatcher.o $(OBJECTS) $(LDFLAGS)
