@@ -56,6 +56,7 @@ static int sent = 0;
 static int dropped = 0;
 static int acked = 0;
 
+static struct mac_address mac_addr;
 static char *mac;
 static char *dispatcher;
 static int port = 5555;
@@ -329,7 +330,7 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 			char* data = (char*)nla_data(attrs[HWSIM_ATTR_FRAME]);
 			unsigned int flags =
 				nla_get_u32(attrs[HWSIM_ATTR_FLAGS]);
-		//	printf("flags: %d\n", flags);
+			printf("flags: %d\n", flags);
 			struct hwsim_tx_rate *tx_rates =
 				(struct hwsim_tx_rate*)
 				nla_data(attrs[HWSIM_ATTR_TX_INFO]);
@@ -344,6 +345,8 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	 * at what the dispatches tells us and retry if the frame was
 	 * dropped.
 	 */
+
+			send_msg_to_dispatcher(src, data, data_len, cookie);
 
 			send_frames_to_radios_with_retries(src, data,
 					data_len, flags, tx_rates, cookie);
@@ -450,6 +453,28 @@ void init_dispatcher_fd(void)
 	freeaddrinfo(result);
 }
 
+int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len, unsigned long cookie)
+{
+	unsigned char buffer[2*1024];
+	ssize_t ret;
+	char addr[17];
+
+	mac_address_to_string(addr, src);
+
+	ret = fmt_msg(buffer, sizeof(buffer), cookie, addr);
+	if (ret < 0) {
+		perror("fmt_msg");
+		return -1;
+	}
+
+	/* FIXME: check that we don't overflow the buffer */
+	memcpy(buffer + ret, data, data_len);
+
+	send(disp_fd, buffer, ret + data_len, 0);
+	return 0;
+
+}
+
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 /* Get the message from the network and send the ACK */
@@ -471,13 +496,23 @@ int recv_and_ack(void)
 	if (parse_msg(&msg, buffer, recvd) < 0)
 		return -1;
 
+	if (msg.ack) {
+		/*
+		 * flags |= HWSIM_TX_STAT_ACK;
+		 * send_tx_info_frame_nl(src, flags, signal, tx_attempts, cookie);
+		 */
+		return 0;
+	}
+
 	/* send cloned frame to iface */
 	signal = get_signal_by_rate(0); /* dummy */
-	send_cloned_frame_msg(/* our mac address? */ NULL, msg.data, msg.data_len, 0, signal);
+	send_cloned_frame_msg(&mac_addr, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */
 	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, mac, msg.src);
+	/* FIXME: check return value */
 	send(disp_fd, buffer, to_send, 0);
+	return 0;
 }
 
 void ping(void)
