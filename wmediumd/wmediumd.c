@@ -496,8 +496,14 @@ int recv_and_ack(void)
 	if (parse_msg(&msg, buffer, recvd) < 0)
 		return -1;
 
+	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
-		/*
+		/* FIXME: figure out if we should set the rest of the flags */
+		int flags = HWSIM_TX_STAT_ACK;
+		int tx_attemps = 1; /* FIXME: kep track (in proto)? guess? */
+
+		send_tx_info_frame_nl(msg.src, flags, signal, tx_attemps, msg.cookie);
+		/*f
 		 * flags |= HWSIM_TX_STAT_ACK;
 		 * send_tx_info_frame_nl(src, flags, signal, tx_attempts, cookie);
 		 */
@@ -505,7 +511,6 @@ int recv_and_ack(void)
 	}
 
 	/* send cloned frame to iface */
-	signal = get_signal_by_rate(0); /* dummy */
 	send_cloned_frame_msg(&mac_addr, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */
