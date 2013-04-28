@@ -438,7 +438,7 @@ void init_dispatcher_fd(void)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
-	if ((ret = getaddrinfo("localhost", NULL, &hints, &result)) < 0) {
+	if ((ret = getaddrinfo(dispatcher, NULL, &hints, &result)) < 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(ret));
 		exit(EXIT_FAILURE);
 	}
@@ -635,6 +635,8 @@ int main(int argc, char* argv[]) {
 
 	/*init netlink*/
 	init_netlink();
+
+	init_dispatcher_fd();
 
 	/*Send a register msg to the kernel*/
 	if (send_register_msg()==0)
