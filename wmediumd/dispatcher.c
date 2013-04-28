@@ -9,6 +9,7 @@
 #include "wmediumd.h"
 #include "probability.h"
 #include "ctl.h"
+#include "proto.h"
 
 /* This is to make config.c happy */
 double *prob_matrix = NULL;
@@ -37,36 +38,15 @@ void on_int(int sig)
 	exit(EXIT_SUCCESS);
 }
 
-unsigned char *set_ip(int *pos_out, const unsigned char *ptr, ssize_t len, struct sockaddr_in *sockaddr)
+int set_ip(const char *addr, struct sockaddr_in *sockaddr)
 {
-	char buf[64];
-	size_t minlen = strlen("XX:XX:XX:XX:XX:XX\n");
-	unsigned char *sp;
-
-	if (len < minlen) {
-		fprintf(stderr, "short packet, %zd insead of >%zu\n", len, minlen);
-		return NULL;
-	}
-
-	size_t maclen = strlen("XX:XX:XX:XX:XX:XX");
-	memcpy(buf, ptr, maclen);
-	buf[maclen] = '\0';
-
-	struct mac_address mac = string_to_mac_address(buf);
+	struct mac_address mac = string_to_mac_address(addr);
 	int pos = find_pos_by_mac_address(&mac);
 	struct peer *peer = &peers[pos];
 	memcpy(&peer->addr, sockaddr, sizeof(struct sockaddr_in));
 	peer->active = 1;
 
-	sp = memchr(ptr + maclen, '\n', len);
-	if (!sp) {
-		fprintf(stderr, "no LF after MAC\n");
-		return NULL;
-	}
-
-	//printf("registered %s at %d\n", buf, pos);
-	*pos_out = pos;
-	return sp + 1;
+	return pos;
 }
 
 int find_pos_by_addr(struct sockaddr_in *in_addr)
@@ -160,15 +140,12 @@ int main(int argc, char **argv)
 	signal(SIGINT, on_int);
 	srand(15); /* it's all pseudo-random anyway */
 	while (1) {
-		size_t msg_pfx_len = strlen("MSG ");
-		size_t ping_pfx_len = strlen("PING ");
-		size_t skip;
 		unsigned char buf[8*1024], *ptr;
 		struct sockaddr_in from;
-		struct msghdr msg;
+		struct wmd_msg msg;
 		socklen_t fromlen;
 		ssize_t len;
-		int pos, is_message;
+		int pos;
 
 
 		fromlen = sizeof(from);
@@ -179,24 +156,19 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 
-		if (!memcmp(buf, "MSG ", msg_pfx_len)) {
-			is_message = 1;
-			skip = msg_pfx_len;
-		} else if (!memcmp(buf, "PING ", ping_pfx_len)) {
-			is_message = 0;
-			skip = ping_pfx_len;
-		} else {
-			fprintf(stderr, "Received invalid message");
+		if (parse_msg(&msg, buf, len) < 0) {
+			fprintf(stderr, "Bad message");
 			continue;
 		}
 
 		/* Figure out what IP/port this was sent from and store it for the MAC */
-		ptr = set_ip(&pos, buf + skip, len - skip, &from);
-		if (!ptr || !is_message)
+		pos = set_ip(msg.src, &from);
+
+		if (msg.ping)
 			continue;
 
 		recvd++;
-		/* And send the message to the  */
-		relay_msg(ptr, len - (ptr - buf), pos);
+		/* And send the message to the other nodes */
+		relay_msg(buf, len, pos);
 	}
 }

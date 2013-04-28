@@ -18,7 +18,7 @@ int fmt_ack(unsigned char *buf, size_t sz, unsigned long cookie, char *src, char
 static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t sz,
 		   const char **ptr_out, size_t *sz_out)
 {
-	const char *pfx_msg = "MSG ", *pfx_ack = "ACK ";
+	const char *pfx_msg = "MSG ", *pfx_ack = "ACK ", *pfx_ping = "PING";
 	const char *ptr = buf;
 	char *endptr;
 	size_t pfx_len = 4;
@@ -28,7 +28,12 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 
 	if (memcmp(buf, pfx_msg, pfx_len)) {
 		if (memcmp(buf, pfx_ack, pfx_len)) {
-			return -1;
+			if (memcmp(buf, pfx_ping, pfx_len)) {
+				return -1;
+			} else {
+				out->ping = 1;
+				pfx_len++;
+			}
 		} else {
 			out->ack = 1;
 		}

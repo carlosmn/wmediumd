@@ -5,7 +5,8 @@
 #include <stdlib.h>
 
 struct wmd_msg {
-	unsigned int ack :1;
+	unsigned int ack :1,
+		ping :1;
 	char src[18];
 	unsigned long cookie;
 	/* Following two only for MSG */
