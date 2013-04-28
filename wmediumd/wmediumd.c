@@ -498,12 +498,17 @@ int recv_and_ack(void)
 
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
+		/* FIXME: keep track of this in the protocol? */
+		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
 		/* FIXME: figure out if we should set the rest of the flags */
 		int flags = HWSIM_TX_STAT_ACK;
-		int tx_attemps = 1; /* FIXME: kep track (in proto)? guess? */
+		struct mac_address addr = string_to_mac_address(msg.src);
 
-		send_tx_info_frame_nl(msg.src, flags, signal, tx_attemps, msg.cookie);
-		/*f
+		set_all_rates_invalid(tx_attempts);
+		tx_attempts[0].count = 1;
+
+		send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie);
+		/*
 		 * flags |= HWSIM_TX_STAT_ACK;
 		 * send_tx_info_frame_nl(src, flags, signal, tx_attempts, cookie);
 		 */
