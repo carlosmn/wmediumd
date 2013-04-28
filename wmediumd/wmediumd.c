@@ -530,6 +530,7 @@ void ping(void)
 	char data[4 + 1 + 17];
 	size_t len = sizeof(data);
 
+	puts("PING");
 	snprintf(data, len, "PING %s", mac);
 	send(disp_fd, data, len, 0);
 }
@@ -563,6 +564,7 @@ void main_loop(void)
 		}
 	}
 
+	puts("exited main loop");
 }
 
 /*
@@ -597,7 +599,7 @@ int main(int argc, char* argv[]) {
 		print_help(EXIT_FAILURE);
 	}
 
-	while((opt = getopt(argc, argv, "hVd:p:")) != -1) {
+	while((opt = getopt(argc, argv, "hVd:p:a:")) != -1) {
 		switch(opt) {
 		case 'h':
 			print_help(EXIT_SUCCESS);
