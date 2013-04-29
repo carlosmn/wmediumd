@@ -339,19 +339,8 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 
 			printf("frame [%d] length:%d\n",received,data_len);
 
-	/*
-	 * XXX: This is where we should send the zmq messages. We
-	 * still need to simulate the layer 2 ACK, so we need to look
-	 * at what the dispatches tells us and retry if the frame was
-	 * dropped.
-	 */
-
 			send_msg_to_dispatcher(src, data, data_len, cookie);
 
-			send_frames_to_radios_with_retries(src, data,
-					data_len, flags, tx_rates, cookie);
-			//printf("\rreceived: %d tried: %d sent: %d acked: %d",
-			//		received, dropped+sent, sent, acked);
 		}
 	}
 	return 0;
@@ -457,7 +446,7 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 {
 	unsigned char buffer[2*1024];
 	ssize_t ret;
-	char addr[17];
+	char addr[18];
 
 	mac_address_to_string(addr, src);
 
