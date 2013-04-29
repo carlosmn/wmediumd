@@ -42,6 +42,11 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 	sz -= pfx_len;
 	ptr += pfx_len;
 
+	if (out->ping) {
+		memcpy(out->src, ptr, MAC_STR_LEN);
+		return 0;
+	}
+
 	errno = 0;
 	out->cookie = strtoul(ptr, &endptr, 10);
 
