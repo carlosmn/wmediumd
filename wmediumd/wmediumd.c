@@ -316,33 +316,33 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	/* generic netlink header*/
 	struct genlmsghdr *gnlh = nlmsg_data(nlh);
 
-	printf("got a netlink message, %d\n", gnlh->cmd);
+	if (gnlh->cmd != HWSIM_CMD_FRAME)
+		return 0;
 
-	if(gnlh->cmd == HWSIM_CMD_FRAME) {
-		/* we get the attributes*/
-		genlmsg_parse(nlh, 0, attrs, HWSIM_ATTR_MAX, NULL);
-		if (attrs[HWSIM_ATTR_ADDR_TRANSMITTER]) {
-			struct mac_address *src = (struct mac_address*)
-				nla_data(attrs[HWSIM_ATTR_ADDR_TRANSMITTER]);
+	/* we get the attributes*/
+	genlmsg_parse(nlh, 0, attrs, HWSIM_ATTR_MAX, NULL);
+	if (!attrs[HWSIM_ATTR_ADDR_TRANSMITTER])
+		return 0;
 
-			unsigned int data_len =
-				nla_len(attrs[HWSIM_ATTR_FRAME]);
-			char* data = (char*)nla_data(attrs[HWSIM_ATTR_FRAME]);
-			unsigned int flags =
-				nla_get_u32(attrs[HWSIM_ATTR_FLAGS]);
-			printf("flags: %d\n", flags);
-			struct hwsim_tx_rate *tx_rates =
-				(struct hwsim_tx_rate*)
-				nla_data(attrs[HWSIM_ATTR_TX_INFO]);
-			unsigned long cookie = nla_get_u64(attrs[HWSIM_ATTR_COOKIE]);
-			received++;
+	struct mac_address *src = (struct mac_address*)
+		nla_data(attrs[HWSIM_ATTR_ADDR_TRANSMITTER]);
 
-			printf("frame [%d] length:%d\n",received,data_len);
+	unsigned int data_len =
+		nla_len(attrs[HWSIM_ATTR_FRAME]);
+	char* data = (char*)nla_data(attrs[HWSIM_ATTR_FRAME]);
+	unsigned int flags =
+		nla_get_u32(attrs[HWSIM_ATTR_FLAGS]);
+	printf("flags: %d\n", flags);
+	struct hwsim_tx_rate *tx_rates =
+		(struct hwsim_tx_rate*)
+		nla_data(attrs[HWSIM_ATTR_TX_INFO]);
+	unsigned long cookie = nla_get_u64(attrs[HWSIM_ATTR_COOKIE]);
+	received++;
 
-			send_msg_to_dispatcher(src, data, data_len, cookie);
+	printf("frame [%d] length:%d\n",received,data_len);
 
-		}
-	}
+	send_msg_to_dispatcher(src, data, data_len, cookie);
+
 	return 0;
 }
 
