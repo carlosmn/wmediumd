@@ -60,6 +60,7 @@ static struct mac_address mac_addr;
 static char *mac;
 static char *dispatcher;
 static int port = 5555;
+static int background;
 
 
 /*
@@ -588,7 +589,7 @@ int main(int argc, char* argv[]) {
 		print_help(EXIT_FAILURE);
 	}
 
-	while((opt = getopt(argc, argv, "hVd:p:a:")) != -1) {
+	while((opt = getopt(argc, argv, "hVd:p:a:b")) != -1) {
 		switch(opt) {
 		case 'h':
 			print_help(EXIT_SUCCESS);
@@ -606,6 +607,9 @@ int main(int argc, char* argv[]) {
 			break;
 		case 'a':
 			mac = strdup(optarg);
+			break;
+		case 'b': /* background (daemonize) */
+			background = 1;
 			break;
 		case '?':
 			printf("wmediumd: Error - No such option:"
@@ -632,6 +636,11 @@ int main(int argc, char* argv[]) {
 	/*Send a register msg to the kernel*/
 	if (send_register_msg()==0)
 		printf("REGISTER SENT!\n");
+
+	if (background && daemon(0, 0)) {
+		perror("daemon");
+		return EXIT_FAILURE;
+	}
 
 	main_loop();
 	
