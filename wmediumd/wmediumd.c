@@ -571,6 +571,7 @@ void print_help(int exval)
 	printf("  -d              dispatcher to connect to\n");
 	printf("  -p              dispatcher's port (defaults to 5555)\n");
 	printf("  -a              address to use as source\n");
+	printf("  -b              run in the background\n");
 
 	exit(exval);
 }
