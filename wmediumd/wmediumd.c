@@ -451,7 +451,7 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 
 	mac_address_to_string(addr, src);
 
-	ret = fmt_msg(buffer, sizeof(buffer), cookie, mac);
+	ret = fmt_msg(buffer, sizeof(buffer), cookie, addr);
 	if (ret < 0) {
 		perror("fmt_msg");
 		return -1;
