@@ -26,9 +26,18 @@ res = subprocess.call(["ip", "link", "set", "dev", iface, "address", addr])
 if res != 0:
     print("Error setting the MAC address")
 
+res = subprocess.call(["ip", "link", "set", iface, "up"])
+if res != 0:
+    print("Error setting the MAC address")
+
+# This part we can probably let the user do when they need to
 res = subprocess.call(["iw", "dev", iface, "set", "type", "ibss"])
 if res != 0:
     print("Error setting IBSS mode")
+
+res = subprocess.call(["iw", "dev", iface, "ibss", "join", "testnet", "2412"])
+if res != 0:
+    print("Error joining testnet")
 
 # Now we can start wmediumd
 
