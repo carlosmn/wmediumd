@@ -50,12 +50,12 @@ int main(int argc, char **argv)
 
 		if (output[i].ack) {
 			sz = fmt_ack(buffer, sizeof(buffer), output[i].cookie, output[i].src, output[i].payload);
-			assert(!strcmp(msg.src, output[i].src));
 		} else {
 			sz = fmt_msg(buffer, sizeof(buffer), output[i].cookie, output[i].src);
 		}
 
 		assert(!parse_msg(&msg, buffer, sz));
+		assert(!strcmp(msg.src, output[i].src));
 		assert(msg.ack == output[i].ack);
 		assert(msg.cookie == output[i].cookie);
 		
