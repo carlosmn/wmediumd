@@ -57,7 +57,6 @@ static int dropped = 0;
 static int acked = 0;
 
 static struct mac_address mac_addr;
-static char *mac;
 static char *dispatcher;
 static int port = 5555;
 static int background;
@@ -497,6 +496,7 @@ int recv_and_ack(void)
 		set_all_rates_invalid(tx_attempts);
 		tx_attempts[0].count = 1;
 
+		printf("ACK from %s\n", msg.src);
 		send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie);
 		/*
 		 * flags |= HWSIM_TX_STAT_ACK;
@@ -509,12 +509,13 @@ int recv_and_ack(void)
 	send_cloned_frame_msg(&mac_addr, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */
-	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, mac, msg.src);
+	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.dst, msg.src);
 	/* FIXME: check return value */
 	send(disp_fd, buffer, to_send, 0);
 	return 0;
 }
 
+#if 0
 void ping(void)
 {
 	char data[4 + 1 + 17];
@@ -524,6 +525,7 @@ void ping(void)
 	snprintf(data, len, "PING %s", mac);
 	send(disp_fd, data, len, 0);
 }
+#endif
 
 void main_loop(void)
 {
@@ -550,7 +552,7 @@ void main_loop(void)
 			nl_recvmsgs_default(sock);
 		} else {
 			/* We haven't sent any messages in a while, send a ping to the dispatcher */
-			ping();
+			//ping();
 		}
 	}
 
@@ -570,7 +572,6 @@ void print_help(int exval)
 	printf("  -V              print version and exit\n\n");
 	printf("  -d              dispatcher to connect to\n");
 	printf("  -p              dispatcher's port (defaults to 5555)\n");
-	printf("  -a              address to use as source\n");
 	printf("  -b              run in the background\n");
 
 	exit(exval);
@@ -605,9 +606,6 @@ int main(int argc, char* argv[]) {
 			break;
 		case 'p':
 			port = atoi(optarg);
-			break;
-		case 'a':
-			mac = strdup(optarg);
 			break;
 		case 'b': /* background (daemonize) */
 			background = 1;
