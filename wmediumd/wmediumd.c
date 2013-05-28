@@ -481,6 +481,7 @@ int recv_and_ack(void)
 		return -1;
 	}
 
+	memset(buffer, 0, sizeof(buffer));
 	/* parse the data */
 	if (parse_msg(&msg, buffer, recvd) < 0)
 		return -1;
@@ -488,7 +489,7 @@ int recv_and_ack(void)
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
 		/* FIXME: keep track of this in the protocol? */
-		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
+		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX] = {0};
 		/* FIXME: figure out if we should set the rest of the flags */
 		int flags = HWSIM_TX_STAT_ACK;
 		struct mac_address addr = string_to_mac_address(msg.src);
