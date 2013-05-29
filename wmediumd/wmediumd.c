@@ -56,7 +56,6 @@ static int sent = 0;
 static int dropped = 0;
 static int acked = 0;
 
-static struct mac_address mac_addr;
 static char *dispatcher;
 static int port = 5555;
 static int background;
@@ -470,18 +469,19 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 int recv_and_ack(void)
 {
 	unsigned char buffer[2*1024];
+	struct mac_address dst;
 	ssize_t recvd, to_send;
 	struct wmd_msg msg;
 	int signal;
 
 
+	memset(buffer, 0, sizeof(buffer));
 	recvd = recv(disp_fd, buffer, sizeof(buffer), 0);
 	if (recvd < 0) {
 		perror("recv");
 		return -1;
 	}
 
-	memset(buffer, 0, sizeof(buffer));
 	/* parse the data */
 	if (parse_msg(&msg, buffer, recvd) < 0)
 		return -1;
@@ -506,8 +506,9 @@ int recv_and_ack(void)
 		return 0;
 	}
 
+	dst = string_to_mac_address(msg.dst);
 	/* send cloned frame to iface */
-	send_cloned_frame_msg(&mac_addr, msg.data, msg.data_len, 0, signal);
+	send_cloned_frame_msg(&dst, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */
 	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.dst, msg.src);
