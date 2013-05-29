@@ -10,9 +10,9 @@ int fmt_msg(unsigned char *buf, size_t sz, unsigned long cookie, char *src)
 	return snprintf(buf, sz, "MSG %lu %s ", cookie, src);
 }
 
-int fmt_ack(unsigned char *buf, size_t sz, unsigned long cookie, char *src, char *dst)
+int fmt_ack(unsigned char *buf, size_t sz, unsigned long cookie, char *dst)
 {
-	return snprintf(buf, sz, "ACK %lu %s %s", cookie, src, dst);
+	return snprintf(buf, sz, "ACK %lu %s", cookie, dst);
 }
 
 static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t sz,
@@ -43,7 +43,7 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 	ptr += pfx_len;
 
 	if (out->ping) {
-		memcpy(out->src, ptr, MAC_STR_LEN);
+		memcpy(out->addr, ptr, MAC_STR_LEN);
 		return 0;
 	}
 
@@ -57,7 +57,7 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 	sz -= (endptr + 1 - ptr);
 	ptr = endptr + 1;
 
-	memcpy(out->src, ptr, MAC_STR_LEN);
+	memcpy(out->addr, ptr, MAC_STR_LEN);
 
 	/* skip the SP */
 	sz -= MAC_STR_LEN + 1;
@@ -85,8 +85,6 @@ int parse_msg(struct wmd_msg *out, const unsigned char *buf, size_t sz)
 	if (!out->ack) {
 		out->data = ptr_out;
 		out->data_len = sz_out;
-	} else {
-		memcpy(out->dst, ptr_out, MAC_STR_LEN);
 	}
 
 	return 0;

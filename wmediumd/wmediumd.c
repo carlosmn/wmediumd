@@ -469,7 +469,7 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 int recv_and_ack(void)
 {
 	unsigned char buffer[2*1024];
-	struct mac_address dst;
+	struct mac_address addr;
 	ssize_t recvd, to_send;
 	struct wmd_msg msg;
 	int signal;
@@ -486,13 +486,14 @@ int recv_and_ack(void)
 	if (parse_msg(&msg, buffer, recvd) < 0)
 		return -1;
 
+	addr = string_to_mac_address(msg.addr);
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
 		/* FIXME: keep track of this in the protocol? */
 		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX] = {0};
 		/* FIXME: figure out if we should set the rest of the flags */
-		int flags = HWSIM_TX_STAT_ACK;
-		struct mac_address addr = string_to_mac_address(msg.src);
+		int flags = 2 | HWSIM_TX_STAT_ACK;
+		char dest[64];
 
 		set_all_rates_invalid(tx_attempts);
 		tx_attempts[0].count = 1;
@@ -506,12 +507,11 @@ int recv_and_ack(void)
 		return 0;
 	}
 
-	dst = string_to_mac_address(msg.dst);
 	/* send cloned frame to iface */
-	send_cloned_frame_msg(&dst, msg.data, msg.data_len, 0, signal);
+	send_cloned_frame_msg(&addr, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */
-	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.dst, msg.src);
+	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.addr);
 	/* FIXME: check return value */
 	send(disp_fd, buffer, to_send, 0);
 	return 0;

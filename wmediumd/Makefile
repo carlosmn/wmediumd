@@ -68,4 +68,4 @@ write-config: write-config.o config.o
 	$(CC) -o $@ write-config.o $(OBJECTS) $(LDFLAGS)
 
 clean: 
-	rm -f $(OBJECTS) wmediumd relayer
+	rm -f $(OBJECTS) wmediumd.o wmediumd relayer
