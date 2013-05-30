@@ -18,7 +18,7 @@ struct {
 } output[] = {
 	{0, "c4:85:08:10:d2:36", 42, "message content"},
 	{0, "c4:85:08:10:d2:37", 4422, "message content"},
-	{1, "c4:85:08:10:d2:37", 42, "c4:85:08:10:d2:36"},
+	{1, "c4:85:08:10:d2:37", 42, NULL},
 };
 
 int main(int argc, char **argv)
@@ -32,11 +32,9 @@ int main(int argc, char **argv)
 
 		assert(msg.ack == output[i].ack);
 		assert(msg.cookie == output[i].cookie);
-		assert(!strcmp(msg.src, output[i].src));
+		assert(!strcmp(msg.addr, output[i].src));
 
-		if (msg.ack) {
-			assert(!strcmp(msg.dst, output[i].payload));
-		} else {
+		if (!msg.ack) {
 			assert(!strcmp(msg.data, output[i].payload));
 		}
 
@@ -49,13 +47,13 @@ int main(int argc, char **argv)
 		ssize_t sz;
 
 		if (output[i].ack) {
-			sz = fmt_ack(buffer, sizeof(buffer), output[i].cookie, output[i].src, output[i].payload);
+			sz = fmt_ack(buffer, sizeof(buffer), output[i].cookie, output[i].src);
 		} else {
 			sz = fmt_msg(buffer, sizeof(buffer), output[i].cookie, output[i].src);
 		}
 
 		assert(!parse_msg(&msg, buffer, sz));
-		assert(!strcmp(msg.src, output[i].src));
+		assert(!strcmp(msg.addr, output[i].src));
 		assert(msg.ack == output[i].ack);
 		assert(msg.cookie == output[i].cookie);
 		

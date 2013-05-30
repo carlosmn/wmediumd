@@ -498,7 +498,6 @@ int recv_and_ack(void)
 		set_all_rates_invalid(tx_attempts);
 		tx_attempts[0].count = 1;
 
-		printf("ACK from %s\n", msg.src);
 		send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie);
 		/*
 		 * flags |= HWSIM_TX_STAT_ACK;
