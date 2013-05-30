@@ -60,7 +60,6 @@ static char *dispatcher;
 static int port = 5555;
 static int background;
 
-
 /*
  * 	Generates a random double value
  */
@@ -314,6 +313,7 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	struct nlmsghdr *nlh = nlmsg_hdr(msg);
 	/* generic netlink header*/
 	struct genlmsghdr *gnlh = nlmsg_data(nlh);
+	int i;
 
 	if (gnlh->cmd != HWSIM_CMD_FRAME)
 		return 0;
@@ -335,10 +335,17 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	struct hwsim_tx_rate *tx_rates =
 		(struct hwsim_tx_rate*)
 		nla_data(attrs[HWSIM_ATTR_TX_INFO]);
+
+	/* Dump the rates */
+	for (i=0; i < IEEE80211_MAX_RATES_PER_TX; i++) {
+		printf("tx_rate[%d].idx = %d, .count = %d\n", i, tx_rates[i].idx, tx_rates[i].count);
+	}
+
+
 	unsigned long cookie = nla_get_u64(attrs[HWSIM_ATTR_COOKIE]);
 	received++;
 
-	printf("frame [%d] length:%d\n",received,data_len);
+	printf("frame [%d] length:%d, cookie:%lu\n",received,data_len, cookie);
 
 	send_msg_to_dispatcher(src, data, data_len, cookie);
 
@@ -449,12 +456,14 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 
 	mac_address_to_string(addr, src);
 
+	printf("pre-fmt_msg %lu\n", cookie);
 	ret = fmt_msg(buffer, sizeof(buffer), cookie, addr);
 	if (ret < 0) {
 		perror("fmt_msg");
 		return -1;
 	}
 
+	printf("message head: %s\n", buffer);
 	/* FIXME: check that we don't overflow the buffer */
 	memcpy(buffer + ret, data, data_len);
 
@@ -483,19 +492,23 @@ int recv_and_ack(void)
 	}
 
 	/* parse the data */
-	if (parse_msg(&msg, buffer, recvd) < 0)
+	if (parse_msg(&msg, buffer, recvd) < 0) {
+		puts("Failed to parse message");
 		return -1;
+	}
 
+	printf("Received message len %d\n", msg.data_len);
 	addr = string_to_mac_address(msg.addr);
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
 		/* FIXME: keep track of this in the protocol? */
-		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX] = {0};
+		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
 		/* FIXME: figure out if we should set the rest of the flags */
 		int flags = 2 | HWSIM_TX_STAT_ACK;
 		char dest[64];
 
 		set_all_rates_invalid(tx_attempts);
+		tx_attempts[0].idx = 0;
 		tx_attempts[0].count = 1;
 
 		send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie);
@@ -511,6 +524,7 @@ int recv_and_ack(void)
 
 	/* send back the ACK */
 	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.addr);
+	printf("Going to send ACK %s\n", buffer);
 	/* FIXME: check return value */
 	send(disp_fd, buffer, to_send, 0);
 	return 0;

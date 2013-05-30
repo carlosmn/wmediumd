@@ -161,9 +161,13 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		/* Figure out what IP/port this was sent from and store it for the MAC */
-		pos = set_ip(msg.src, &from);
+		printf("got message: %s\n", buf);
 
+		/* Figure out what IP/port this was sent from and store it for the MAC */
+		pos = set_ip(msg.addr, &from);
+
+		if (msg.ack)
+			printf("Got ACK: %s\n", buf);
 		if (msg.ping)
 			continue;
 
