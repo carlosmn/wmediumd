@@ -46,10 +46,11 @@ NLVERSION :=$(shell $(PKG_CONFIG) --print-provides $(NLLIBNAME))
 CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig
 OBJECTS=probability.o mac_address.o config.o proto.o
+HEADERS=proto.h wmediumd.h
 
 all: wmediumd dispatcher test write-config proto-test
 
-wmediumd: wmediumd.o $(OBJECTS)
+wmediumd: wmediumd.o $(OBJECTS) $(HEADERS)
 	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
 
 #relayer: relayer.o
@@ -58,13 +59,13 @@ wmediumd: wmediumd.o $(OBJECTS)
 test: test.o
 	$(CC) -o $@ test.o mac_address.o
 
-proto-test: proto-test.o proto.o
+proto-test: proto-test.o proto.o $(HEADERS)
 	$(CC) -o $@ proto-test.o proto.o
 
-dispatcher: dispatcher.o $(OBJECTS)
+dispatcher: dispatcher.o $(OBJECTS) $(HEADERS)
 	$(CC) -o $@ dispatcher.o $(OBJECTS) $(LDFLAGS)
 
-write-config: write-config.o config.o
+write-config: write-config.o config.o $(HEADERS)
 	$(CC) -o $@ write-config.o $(OBJECTS) $(LDFLAGS)
 
 clean: 
