@@ -498,7 +498,6 @@ int recv_and_ack(void)
 	}
 
 	printf("Received message len %d\n", msg.data_len);
-	addr = string_to_mac_address(msg.addr);
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
 		/* FIXME: keep track of this in the protocol? */
@@ -506,6 +505,8 @@ int recv_and_ack(void)
 		/* FIXME: figure out if we should set the rest of the flags */
 		int flags = 2 | HWSIM_TX_STAT_ACK;
 		char dest[64];
+
+		addr = string_to_mac_address(msg.addr);
 
 		set_all_rates_invalid(tx_attempts);
 		tx_attempts[0].idx = 0;
@@ -520,6 +521,7 @@ int recv_and_ack(void)
 	}
 
 	/* send cloned frame to iface */
+	addr = string_to_mac_address(msg.dst);
 	send_cloned_frame_msg(&addr, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */

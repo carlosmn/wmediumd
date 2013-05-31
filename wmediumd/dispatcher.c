@@ -74,7 +74,16 @@ int inline send_msg(const struct sockaddr_in *sin, const unsigned char *msg, siz
 	return 0;
 }
 
-int relay_msg(const unsigned char *ptr, size_t len, int pos)
+inline void ovewrite_destination(unsigned char *ptr, struct mac_address *dest)
+{
+	char addr[17];
+	size_t offset = strlen("MSG ");
+
+	mac_address_to_string(addr, dest);
+	memcpy(ptr + offset, addr, 16);
+}
+
+int relay_msg(unsigned char *ptr, size_t len, int pos)
 {
 	int i;
 	double loss, closs;
@@ -102,6 +111,7 @@ int relay_msg(const unsigned char *ptr, size_t len, int pos)
 		if (!peers[i].active || closs > loss)
 			continue;
 
+		ovewrite_destination(ptr, to_mac);
 		send_msg(&peers[i].addr, ptr, len);
 	}
 
