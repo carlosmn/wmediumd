@@ -5,8 +5,8 @@
 #include "proto.h"
 
 const char *input[] = {
-	"MSG 42 c4:85:08:10:d2:36 00:00:00:00:00:00 message content",
-	"MSG 4422 c4:85:08:10:d2:37 00:00:00:00:00:00 message content",
+	"MSG 00:00:00:00:00:00  42 c4:85:08:10:d2:36 message content",
+	"MSG  00:00:00:00:00:00 4422 c4:85:08:10:d2:37 message content",
 	"ACK 42 c4:85:08:10:d2:37 c4:85:08:10:d2:36"
 };
 
