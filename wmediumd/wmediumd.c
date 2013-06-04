@@ -37,6 +37,8 @@
 #include "config.h"
 #include "proto.h"
 
+#include <glib.h>
+
 struct nl_sock *sock;
 struct nl_msg *msg;
 struct nl_cb *cb;
@@ -59,6 +61,16 @@ static int acked = 0;
 static char *dispatcher;
 static int port = 5555;
 static int background;
+
+GSList *unacked;
+struct unacked_frame {
+	unsigned long cookie;
+	struct mac_address addr;
+	time_t time;
+};
+
+int add_to_unacked(struct mac_address *addr, unsigned long cookie);
+int gc_unacked(void);
 
 /*
  * 	Generates a random double value
@@ -338,7 +350,7 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	unsigned long cookie = nla_get_u64(attrs[HWSIM_ATTR_COOKIE]);
 	received++;
 
-	printf("frame [%d] length:%d, flags:%d\n",received,data_len, flags);
+	//printf("frame [%d] length:%d, flags:%d\n",received,data_len, flags);
 
 	send_msg_to_dispatcher(src, data, data_len, flags, cookie);
 
@@ -457,13 +469,53 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 
 	/* FIXME: check that we don't overflow the buffer */
 	memcpy(buffer + ret, data, data_len);
+	add_to_unacked(src, cookie);
 
 	send(disp_fd, buffer, ret + data_len, 0);
 	return 0;
 
 }
 
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
+int add_to_unacked(struct mac_address *addr, unsigned long cookie)
+{
+	struct unacked_frame *frame;
+
+	frame = calloc(1, sizeof(struct unacked_frame));
+	if (!frame)
+		return -1;
+
+	frame->cookie = cookie;
+	frame->time = time(NULL);
+	memcpy(&frame->addr, addr, sizeof(struct mac_address));
+	g_slist_append(unacked, frame);
+}
+
+void unacked_gc(gpointer data, gpointer pnow)
+{
+	time_t now = *(time_t *)pnow;
+	struct unacked_frame *frame = (struct unacked_frame *)data;
+	struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
+
+	if (frame == NULL)
+		return;
+
+	set_all_rates_invalid(tx_attempts);
+	tx_attempts[0].idx = 0;
+	tx_attempts[0].count = 1;
+
+	if (now > frame->time) {
+		send_tx_info_frame_nl(&frame->addr, HWSIM_TX_STAT_ACK, 0, tx_attempts, frame->cookie);
+
+	}
+}
+
+int gc_unacked(void)
+{
+	time_t now = time(NULL);
+	g_slist_foreach(unacked, unacked_gc, &now);
+}
+
+//#define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 /* Get the message from the network and send the ACK */
 int recv_and_ack(void)
@@ -503,7 +555,6 @@ int recv_and_ack(void)
 		tx_attempts[0].idx = 0;
 		tx_attempts[0].count = 1;
 
-		puts("got an ACK");
 		if (send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie))
 			perror("send_tx_info_frame_nl");
 		/*
@@ -558,10 +609,13 @@ void main_loop(void)
 		ret = select(nfds, &rfds, NULL, NULL, &tv);
 		if (FD_ISSET(disp_fd, &rfds)) {
 			recv_and_ack();
+			gc_unacked();
 		} else if (FD_ISSET(nl_fd, &rfds)) {
 			/* receive nl messages until no more data is available */
 			nl_recvmsgs_default(sock);
+			gc_unacked();
 		} else {
+			gc_unacked();
 			/* We haven't sent any messages in a while, send a ping to the dispatcher */
 			//ping();
 		}
@@ -641,6 +695,7 @@ int main(int argc, char* argv[]) {
 	/*init netlink*/
 	init_netlink();
 
+	unacked = g_slist_alloc();
 	init_dispatcher_fd();
 
 	/*Send a register msg to the kernel*/

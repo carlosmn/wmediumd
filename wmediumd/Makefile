@@ -43,6 +43,10 @@ LDFLAGS += $(shell $(PKG_CONFIG) --libs $(NLLIBNAME))
 CFLAGS += $(shell $(PKG_CONFIG) --cflags $(NLLIBNAME))
 NLVERSION :=$(shell $(PKG_CONFIG) --print-provides $(NLLIBNAME))
 
+GLIBNAME = "glib-2.0"
+LDFLAGS += $(shell $(PKG_CONFIG) --libs $(GLIBNAME))
+CFLAGS += $(shell $(PKG_CONFIG) --cflags $(GLIBNAME))
+
 CFLAGS+=-DVERSION_STR=$(VERSION_STR) -g
 LDFLAGS+=-lconfig
 OBJECTS=probability.o mac_address.o config.o proto.o
