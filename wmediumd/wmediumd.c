@@ -331,21 +331,14 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 	char* data = (char*)nla_data(attrs[HWSIM_ATTR_FRAME]);
 	unsigned int flags =
 		nla_get_u32(attrs[HWSIM_ATTR_FLAGS]);
-	printf("flags: %d\n", flags);
 	struct hwsim_tx_rate *tx_rates =
 		(struct hwsim_tx_rate*)
 		nla_data(attrs[HWSIM_ATTR_TX_INFO]);
 
-	/* Dump the rates */
-	for (i=0; i < IEEE80211_MAX_RATES_PER_TX; i++) {
-		printf("tx_rate[%d].idx = %d, .count = %d\n", i, tx_rates[i].idx, tx_rates[i].count);
-	}
-
-
 	unsigned long cookie = nla_get_u64(attrs[HWSIM_ATTR_COOKIE]);
 	received++;
 
-	printf("frame [%d] length:%d, cookie:%lu\n",received,data_len, cookie);
+	printf("frame [%d] length:%d, flags:%d\n",received,data_len, flags);
 
 	send_msg_to_dispatcher(src, data, data_len, cookie);
 
@@ -456,14 +449,12 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 
 	mac_address_to_string(addr, src);
 
-	printf("pre-fmt_msg %lu\n", cookie);
 	ret = fmt_msg(buffer, sizeof(buffer), cookie, addr);
 	if (ret < 0) {
 		perror("fmt_msg");
 		return -1;
 	}
 
-	printf("message head: %s\n", buffer);
 	/* FIXME: check that we don't overflow the buffer */
 	memcpy(buffer + ret, data, data_len);
 
@@ -497,7 +488,7 @@ int recv_and_ack(void)
 		return -1;
 	}
 
-	printf("Received message len %d\n", msg.data_len);
+	//printf("Received message len %d\n", msg.data_len);
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
 		/* FIXME: keep track of this in the protocol? */
@@ -526,7 +517,6 @@ int recv_and_ack(void)
 
 	/* send back the ACK */
 	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.addr);
-	printf("Going to send ACK %s\n", buffer);
 	/* FIXME: check return value */
 	send(disp_fd, buffer, to_send, 0);
 	return 0;
