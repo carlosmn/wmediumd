@@ -55,15 +55,17 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 		ptr += MAC_STR_LEN + 1;
 	}
 
-	errno = 0;
-	out->flags = strtoul(ptr, &endptr, 10);
+	if (!out->ack) {
+		errno = 0;
+		out->flags = strtoul(ptr, &endptr, 10);
 
-	if (errno) /* only real way to check, according to stroul(3) */
-		return -1;
+		if (errno) /* only real way to check, according to stroul(3) */
+			return -1;
 
-	/* skip the SP */
-	sz -= (endptr + 1 - ptr);
-	ptr = endptr + 1;
+		/* skip the SP */
+		sz -= (endptr + 1 - ptr);
+		ptr = endptr + 1;
+	}
 
 	errno = 0;
 	out->cookie = strtoul(ptr, &endptr, 10);
