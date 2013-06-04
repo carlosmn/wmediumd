@@ -83,7 +83,7 @@ inline void ovewrite_destination(unsigned char *ptr, struct mac_address *dest)
 	memcpy(ptr + offset, addr, 16);
 }
 
-int relay_msg(unsigned char *ptr, size_t len, int pos)
+int relay_msg(unsigned char *ptr, size_t len, int is_ack, int pos)
 {
 	int i;
 	double loss, closs;
@@ -111,7 +111,8 @@ int relay_msg(unsigned char *ptr, size_t len, int pos)
 		if (!peers[i].active || closs > loss)
 			continue;
 
-		ovewrite_destination(ptr, to_mac);
+		if (!is_ack)
+			ovewrite_destination(ptr, to_mac);
 		send_msg(&peers[i].addr, ptr, len);
 	}
 
@@ -174,11 +175,15 @@ int main(int argc, char **argv)
 		/* Figure out what IP/port this was sent from and store it for the MAC */
 		pos = set_ip(msg.addr, &from);
 
+		/* For an ACK, we only forward it to the desination */
+		if (msg.ack) {
+		}
+
 		if (msg.ping)
 			continue;
 
 		recvd++;
 		/* And send the message to the other nodes */
-		relay_msg(buf, len, pos);
+		relay_msg(buf, len, msg.ack, pos);
 	}
 }
