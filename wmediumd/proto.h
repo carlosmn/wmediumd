@@ -11,11 +11,12 @@ struct wmd_msg {
 	unsigned long cookie;
 	/* Following two only for MSG */
 	char dst[18];
+	int flags;
 	const char *data;
 	size_t data_len;
 };
 
-int fmt_msg(unsigned char *buf, const size_t sz, const unsigned long cookie, const char *src);
+int fmt_msg(unsigned char *buf, const size_t sz, int flags, const unsigned long cookie, const char *src);
 int fmt_ack(unsigned char *buf, const size_t sz, const unsigned long cookie, const char *dst);
 int parse_msg(struct wmd_msg *out, const unsigned char *buf, size_t sz);
 

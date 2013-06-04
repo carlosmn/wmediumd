@@ -5,9 +5,9 @@
 
 #define MAC_STR_LEN 17
 
-int fmt_msg(unsigned char *buf, const size_t sz, const unsigned long cookie, const char *src)
+int fmt_msg(unsigned char *buf, const size_t sz, int flags, const unsigned long cookie, const char *src)
 {
-	return snprintf(buf, sz, "MSG 00:00:00:00:00:00 %lu %s ", cookie, src);
+	return snprintf(buf, sz, "MSG 00:00:00:00:00:00 %d %lu %s ", flags, cookie, src);
 }
 
 int fmt_ack(unsigned char *buf, const size_t sz, const unsigned long cookie, const char *dst)
@@ -56,6 +56,16 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 	}
 
 	errno = 0;
+	out->flags = strtoul(ptr, &endptr, 10);
+
+	if (errno) /* only real way to check, according to stroul(3) */
+		return -1;
+
+	/* skip the SP */
+	sz -= (endptr + 1 - ptr);
+	ptr = endptr + 1;
+
+	errno = 0;
 	out->cookie = strtoul(ptr, &endptr, 10);
 
 	if (errno) /* only real way to check, according to stroul(3) */
@@ -64,6 +74,7 @@ static int parse_msg_head(struct wmd_msg *out, const unsigned char *buf, size_t 
 	/* skip the SP */
 	sz -= (endptr + 1 - ptr);
 	ptr = endptr + 1;
+
 
 	memcpy(out->addr, ptr, MAC_STR_LEN);
 

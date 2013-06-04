@@ -340,7 +340,7 @@ static int process_messages_cb(struct nl_msg *msg, void *arg)
 
 	printf("frame [%d] length:%d, flags:%d\n",received,data_len, flags);
 
-	send_msg_to_dispatcher(src, data, data_len, cookie);
+	send_msg_to_dispatcher(src, data, data_len, flags, cookie);
 
 	return 0;
 }
@@ -441,7 +441,7 @@ void init_dispatcher_fd(void)
 	freeaddrinfo(result);
 }
 
-int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len, unsigned long cookie)
+int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len, int flags, unsigned long cookie)
 {
 	unsigned char buffer[2*1024];
 	ssize_t ret;
@@ -449,7 +449,7 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 
 	mac_address_to_string(addr, src);
 
-	ret = fmt_msg(buffer, sizeof(buffer), cookie, addr);
+	ret = fmt_msg(buffer, sizeof(buffer), flags, cookie, addr);
 	if (ret < 0) {
 		perror("fmt_msg");
 		return -1;
@@ -494,7 +494,7 @@ int recv_and_ack(void)
 		/* FIXME: keep track of this in the protocol? */
 		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
 		/* FIXME: figure out if we should set the rest of the flags */
-		int flags = 2 | HWSIM_TX_STAT_ACK;
+		int flags = HWSIM_TX_STAT_ACK;
 		char dest[64];
 
 		addr = string_to_mac_address(msg.addr);
@@ -503,7 +503,9 @@ int recv_and_ack(void)
 		tx_attempts[0].idx = 0;
 		tx_attempts[0].count = 1;
 
-		send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie);
+		puts("got an ACK");
+		if (send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie))
+			perror("send_tx_info_frame_nl");
 		/*
 		 * flags |= HWSIM_TX_STAT_ACK;
 		 * send_tx_info_frame_nl(src, flags, signal, tx_attempts, cookie);
@@ -516,9 +518,11 @@ int recv_and_ack(void)
 	send_cloned_frame_msg(&addr, msg.data, msg.data_len, 0, signal);
 
 	/* send back the ACK */
-	to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.addr);
-	/* FIXME: check return value */
-	send(disp_fd, buffer, to_send, 0);
+	if (!(msg.flags & HWSIM_TX_CTL_NO_ACK)) {
+		to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.addr);
+		/* FIXME: check return value */
+		send(disp_fd, buffer, to_send, 0);
+	}
 	return 0;
 }
 
