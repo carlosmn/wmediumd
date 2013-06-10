@@ -62,7 +62,7 @@ static char *dispatcher;
 static int port = 5555;
 static int background;
 
-GSList *unacked;
+GList *unacked;
 struct unacked_frame {
 	unsigned long cookie;
 	struct mac_address addr;
@@ -489,7 +489,7 @@ int add_to_unacked(struct mac_address *addr, unsigned long cookie)
 	frame->cookie = cookie;
 	frame->time = time(NULL);
 	memcpy(&frame->addr, addr, sizeof(struct mac_address));
-	g_slist_append(unacked, frame);
+	g_list_append(unacked, frame);
 }
 
 void unacked_gc(gpointer data, gpointer pnow)
@@ -498,15 +498,19 @@ void unacked_gc(gpointer data, gpointer pnow)
 	struct unacked_frame *frame = (struct unacked_frame *)data;
 	struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
 
+	printf("frame %p, now %d\n", frame, now);
+
 	if (frame == NULL)
 		return;
 
+	printf("frame->time %d, cookie %lu\n", frame->time, frame->cookie);
 	set_all_rates_invalid(tx_attempts);
 	tx_attempts[0].idx = 0;
 	tx_attempts[0].count = 1;
 
 	if (now > frame->time) {
 		send_tx_info_frame_nl(&frame->addr, HWSIM_TX_STAT_ACK, 0, tx_attempts, frame->cookie);
+		gc_remove(frame->cookie);
 
 	}
 }
@@ -514,7 +518,27 @@ void unacked_gc(gpointer data, gpointer pnow)
 int gc_unacked(void)
 {
 	time_t now = time(NULL);
-	g_slist_foreach(unacked, unacked_gc, &now);
+	g_list_foreach(unacked, unacked_gc, &now);
+}
+
+gint find_by_cookie(gconstpointer a, gconstpointer b)
+{
+	struct unacked_frame *frame = (struct unacked_frame *)a;
+	unsigned long cookie = *(unsigned long *)b;
+
+	if (a == NULL)
+		return -1;
+
+	return frame->cookie != cookie;
+}
+
+int gc_remove(unsigned long cookie)
+{
+	GList *cur = g_list_find_custom(unacked, &cookie, find_by_cookie);
+	if (cur) {
+		free(cur->data);
+		g_list_delete_link(unacked, cur);
+	}
 }
 
 //#define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -559,6 +583,9 @@ int recv_and_ack(void)
 
 		if (send_tx_info_frame_nl(&addr, flags, signal, tx_attempts, msg.cookie))
 			perror("send_tx_info_frame_nl");
+
+		gc_remove(msg.cookie);
+
 		/*
 		 * flags |= HWSIM_TX_STAT_ACK;
 		 * send_tx_info_frame_nl(src, flags, signal, tx_attempts, cookie);
@@ -603,8 +630,8 @@ void main_loop(void)
 		FD_SET(nl_fd, &rfds);
 		FD_SET(disp_fd, &rfds);
 
-		/* Max sleep 0.5 secs */
-		tv.tv_sec = 0;
+		/* Max sleep 1.5 secs */
+		tv.tv_sec = 1;
 		tv.tv_usec = 500000;
 
 		/* TODO: see if it makes sense to prefer a different one each time */
@@ -697,7 +724,7 @@ int main(int argc, char* argv[]) {
 	/*init netlink*/
 	init_netlink();
 
-	unacked = g_slist_alloc();
+	unacked = g_list_alloc();
 	init_dispatcher_fd();
 
 	/*Send a register msg to the kernel*/
