@@ -25,6 +25,7 @@
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
 #include <netlink/genl/family.h>
+#include <sys/time.h>
 #include <stdint.h>
 #include <getopt.h>
 #include <signal.h>
@@ -66,7 +67,7 @@ GList *unacked;
 struct unacked_frame {
 	unsigned long cookie;
 	struct mac_address addr;
-	time_t time;
+	struct timeval time;
 };
 
 int add_to_unacked(struct mac_address *addr, unsigned long cookie);
@@ -487,28 +488,41 @@ int add_to_unacked(struct mac_address *addr, unsigned long cookie)
 		return -1;
 
 	frame->cookie = cookie;
-	frame->time = time(NULL);
+	gettimeofday(&frame->time, NULL);
 	memcpy(&frame->addr, addr, sizeof(struct mac_address));
 	g_list_append(unacked, frame);
 }
 
+int timed_out(struct timeval *val, struct timeval *now)
+{
+	/* at the very least they're going to be the same */
+	time_t rollover = now->tv_sec - val->tv_sec;
+	suseconds_t diff = now->tv_usec - val->tv_usec;
+
+	/* <0 means we rolled over the seconds, so reverse it */
+	if (diff < 0)
+		diff = -diff;
+
+	if (diff > 1000 || rollover > 1)
+		return 1;
+
+	return 0;
+}
+
 void unacked_gc(gpointer data, gpointer pnow)
 {
-	time_t now = *(time_t *)pnow;
+	struct timeval *now = (struct timeval *)pnow;
 	struct unacked_frame *frame = (struct unacked_frame *)data;
 	struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
-
-	printf("frame %p, now %d\n", frame, now);
 
 	if (frame == NULL)
 		return;
 
-	printf("frame->time %d, cookie %lu\n", frame->time, frame->cookie);
 	set_all_rates_invalid(tx_attempts);
 	tx_attempts[0].idx = 0;
 	tx_attempts[0].count = 1;
 
-	if (now > frame->time) {
+	if (timed_out(&frame->time, now)) {
 		send_tx_info_frame_nl(&frame->addr, HWSIM_TX_STAT_ACK, 0, tx_attempts, frame->cookie);
 		gc_remove(frame->cookie);
 
@@ -517,7 +531,9 @@ void unacked_gc(gpointer data, gpointer pnow)
 
 int gc_unacked(void)
 {
-	time_t now = time(NULL);
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
 	g_list_foreach(unacked, unacked_gc, &now);
 }
 
@@ -630,9 +646,10 @@ void main_loop(void)
 		FD_SET(nl_fd, &rfds);
 		FD_SET(disp_fd, &rfds);
 
-		/* Max sleep 1.5 secs */
-		tv.tv_sec = 1;
-		tv.tv_usec = 500000;
+		/* Max sleep 0.5 secs */
+		tv.tv_sec = 0;
+		tv.tv_usec = 1; // return immeditely
+		//tv.tv_usec = 500000;
 
 		/* TODO: see if it makes sense to prefer a different one each time */
 		ret = select(nfds, &rfds, NULL, NULL, &tv);
