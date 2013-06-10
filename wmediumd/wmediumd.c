@@ -469,7 +469,9 @@ int send_msg_to_dispatcher(struct mac_address *src, void *data, size_t data_len,
 
 	/* FIXME: check that we don't overflow the buffer */
 	memcpy(buffer + ret, data, data_len);
-	add_to_unacked(src, cookie);
+	if (!(flags & HWSIM_TX_CTL_NO_ACK)) {
+		add_to_unacked(src, cookie);
+	}
 
 	send(disp_fd, buffer, ret + data_len, 0);
 	return 0;
