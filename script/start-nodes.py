@@ -7,8 +7,8 @@ import shlex
 from optparse import OptionParser
 
 BASE_IMAGE = "wmediumd-skel"
-KERNEL = "vmlinuz-3.9-1-amd64"
-INITRD = "initrd.img-3.9-1-amd64"
+KERNEL = "vmlinuz-3.8-2-amd64"
+INITRD = "initrd.img-3.8-2-amd64"
 OPTIONS = "root=UUID=a9468c72-4a4a-4463-aa25-5596f9b951b7 ro quiet"
 
 def start_one(n): 
