@@ -25,7 +25,7 @@ call(shlex.split(insmod))
 iface_up = "ip link set %s up" % IFACE
 call(shlex.split(iface_up))
 
-join_net = "iw dev %s ibss join testnet 2412" % IFACE
+join_net = "iw dev %s ibss join testnet 2412 26:1C:41:D1:AC:90" % IFACE
 call(shlex.split(join_net))
 
 set_ip = "ip address add 192.168.2.%s/24 dev %s" % (id, IFACE)
