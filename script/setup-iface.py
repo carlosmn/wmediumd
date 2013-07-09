@@ -14,11 +14,13 @@ add_iface = "iw dev wlan0 interface add %s type ibss" % IFACE
 call(shlex.split(add_iface))
 
 # Load the kernel module
-insmod = "insmod /wmediumd/mac802_hwsim.ko radios=1 offset=%s" % id
+call(shlex.split("modprobe mac80211"))
+insmod = "insmod /wmediumd/mac80211_hwsim.ko radios=1 mac_offset=%s" % id
 call(shlex.split(insmod))
 
-set_mac = "ip link set dev %s address 42:00:00:00:%02x:00" % IFACE, int(id)
-call(shlex.split(set_mac))
+# The address should already be fine, and we can't change it anyway
+#set_mac = "ip link set dev %s address 42:00:00:00:%02x:00" % IFACE, int(id)
+#call(shlex.split(set_mac))
 
 iface_up = "ip link set %s up" % IFACE
 call(shlex.split(iface_up))
