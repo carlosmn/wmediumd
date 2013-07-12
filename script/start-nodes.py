@@ -24,11 +24,11 @@ def start_one(n):
 ## Program start
 
 parser = OptionParser()
-parser.add_option("-n", "--nodes", dest="nodes", help="Number of nodes")
+parser.add_option("-n", "--nodes", dest="nodes", type="int", help="Number of nodes")
 (options, args) = parser.parse_args()
 
 # We start the nodes at 2 so the addresses and MACs line up and we can
 # have the .1 IP address for the dispatcher
-nodes = [start_one(i+2) for i in range(int(options.nodes))]
+nodes = [start_one(i+2) for i in range(options.nodes)]
 
 print nodes
