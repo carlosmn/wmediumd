@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# Add the new tap interface to the bridge so we can talk to it
+brctl addif br-wmediumd $1
+ip link set $1 up
