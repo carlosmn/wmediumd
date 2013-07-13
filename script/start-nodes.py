@@ -2,13 +2,13 @@
 
 # Start a number of nodes which all talk to the same dispatcher
 
-import subprocess
-import shlex
+import subprocess, shlex, signal
 from optparse import OptionParser
 
-BASE_IMAGE = "wmediumd-skel"
-KERNEL = "vmlinuz-3.8-2-amd64"
-INITRD = "initrd.img-3.8-2-amd64"
+BASE_PATH = "/home/carlos/slow/carlos/machines/"
+BASE_IMAGE = BASE_PATH + "wmediumd-skel"
+KERNEL = BASE_PATH + "vmlinuz-3.8-2-amd64"
+INITRD = BASE_PATH + "initrd.img-3.8-2-amd64"
 OPTIONS = "root=UUID=a9468c72-4a4a-4463-aa25-5596f9b951b7 ro quiet"
 
 def start_one(n): 
@@ -21,14 +21,35 @@ def start_one(n):
     command = shlex.split(cmdline)
     return subprocess.Popen(command)
 
+def run(str):
+    subprocess.call(shlex.split(str))
+
 ## Program start
 
 parser = OptionParser()
 parser.add_option("-n", "--nodes", dest="nodes", type="int", help="Number of nodes")
 (options, args) = parser.parse_args()
 
+# Create the bridge we'll add the VM interfaces to. The bridge needs
+# to have the address assigned to it so the kernel knows how to route
+run("brctl addbr br-wmediumd")
+run("ip address add 172.16.0.1/12 dev br-wmediumd")
+run("ip link set br-wmediumd up")
+
 # We start the nodes at 2 so the addresses and MACs line up and we can
 # have the .1 IP address for the dispatcher
 nodes = [start_one(i+2) for i in range(options.nodes)]
 
-print nodes
+try:
+    while True:
+        raw_input("> ")
+except:
+    pass
+
+# Bring down the bridge
+run("ip link set br-wmediumd down")
+run("brctl delbr br-wmediumd")
+
+# And kill the virtual machines
+for node in nodes:
+    node.send_signal(signal.SIGINT)
