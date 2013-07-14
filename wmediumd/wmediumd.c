@@ -503,7 +503,8 @@ int timed_out(struct timeval *val, struct timeval *now)
 	if (diff < 0)
 		diff = -diff;
 
-	if (diff > 1000 || rollover > 1)
+	/* Consider the frame lost after 1000us = 10ms */
+	if (diff > 10000 || rollover > 1)
 		return 1;
 
 	return 0;
