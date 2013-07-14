@@ -99,7 +99,21 @@ int relay_msg(unsigned char *ptr, size_t len, int is_ack, int pos)
 	/* for each pair of addresses, find the loss at rate 0 and
 	 * compare against the random value */
 
+	/*
+	 * For an ACK, the address we have is the destination, not the
+	 * source, so we need to treat it specially
+	 */
+	if (is_ack) {
+		send_msg(&peers[pos].addr, ptr, len);
+		return 0;
+	}
+
+	/*
+	 * For non-ACK messages, we send to every peer in order to
+	 * cover the broadcast case.
+	 */
 	for (i = 0; i < array_size; i++) {
+		/* Don't send to the source */
 		if (i == pos)
 			continue;
 
@@ -172,11 +186,9 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		/* Figure out what IP/port this was sent from and store it for the MAC */
-		pos = set_ip(msg.addr, &from);
-
-		/* For an ACK, we only forward it to the desination */
-		if (msg.ack) {
+		if (!msg.ack) {
+			/* Figure out what IP/port this was sent from and store it for the MAC */
+			pos = set_ip(msg.addr, &from);
 		}
 
 		if (msg.ping)
