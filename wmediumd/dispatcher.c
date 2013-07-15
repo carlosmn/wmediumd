@@ -104,6 +104,9 @@ int relay_msg(unsigned char *ptr, size_t len, int is_ack, int pos)
 	 * source, so we need to treat it specially
 	 */
 	if (is_ack) {
+		if (closs > loss)
+			return 0;
+
 		send_msg(&peers[pos].addr, ptr, len);
 		return 0;
 	}
