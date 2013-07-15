@@ -116,7 +116,7 @@ int write_config(char *file, int ifaces, float value)
 	for(i = 0; i < ifaces; ++i) {
 		setting = config_setting_add(array, NULL, CONFIG_TYPE_STRING);
 		char buffer[25];
-		sprintf (buffer, "42:00:00:00:%02d:00", i);
+		sprintf (buffer, "42:00:00:00:%02x:00", i);
 		config_setting_set_string(setting, buffer);
 	}
 
