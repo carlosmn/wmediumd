@@ -168,6 +168,10 @@ double find_prob_by_addrs_and_rate (double *aMatrix, struct mac_address *src,
 double * init_probability(int size) {
 
 	array_size = size;
+	/* In case we're reloading */
+	if (indexer)
+		free(indexer);
+
 	indexer = malloc(sizeof(struct mac_address)*array_size);
 
 	if (indexer==NULL) {

@@ -32,10 +32,17 @@ struct peer {
 static struct peer *peers;
 static int sock;
 
+static int reload;
+
 void on_int(int sig)
 {
 	fprintf(stderr, "dispatcher, recvd %zu, sent %zu\n", recvd, sent);
 	exit(EXIT_SUCCESS);
+}
+
+void on_hup(int sig)
+{
+	reload = 1;
 }
 
 int set_ip(const char *addr, struct sockaddr_in *sockaddr)
@@ -166,6 +173,7 @@ int main(int argc, char **argv)
 	}
 
 	signal(SIGINT, on_int);
+	signal(SIGHUP, on_hup);
 	srand(15); /* it's all pseudo-random anyway */
 	while (1) {
 		unsigned char buf[8*1024], *ptr;
@@ -175,6 +183,10 @@ int main(int argc, char **argv)
 		ssize_t len;
 		int pos;
 
+		if (reload) {
+			load_config("dispatcher-config.cfg");
+			reload = 0;
+		}
 
 		fromlen = sizeof(from);
 		memset(&from, 0, sizeof(from));

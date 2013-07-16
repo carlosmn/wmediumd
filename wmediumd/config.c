@@ -243,6 +243,8 @@ int load_config(const char *file)
 	size = count_ids;
 	printf("#_if = %d\n",count_ids);
 	/*Initialize the probability*/
+	if (prob_matrix)
+		free(prob_matrix);
 	prob_matrix = init_probability(count_ids);
 
 	/*Fill the mac_addr*/
