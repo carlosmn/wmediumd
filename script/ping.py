@@ -4,7 +4,7 @@ import socket, sys
 from optparse import OptionParser
 
 parser = OptionParser()
-parser.add_option("n", "number", dest="number", type="int", help="Number of messages to send")
+parser.add_option("-n", "--number", dest="number", type="int", help="Number of messages to send")
 (options, args) = parser.parse_args()
 
 if len(args) != 1:
