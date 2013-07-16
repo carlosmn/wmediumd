@@ -37,6 +37,9 @@ parser = OptionParser()
 parser.add_option("-n", "--nodes", dest="nodes", type="int", help="Number of nodes")
 (options, args) = parser.parse_args()
 
+rewrite_config("0.0")
+dispatcher = subprocess.Popen(["../wmediumd/dispatcher"])
+
 # Create the bridge we'll add the VM interfaces to. The bridge needs
 # to have the address assigned to it so the kernel knows how to route
 run("brctl addbr br-wmediumd")
