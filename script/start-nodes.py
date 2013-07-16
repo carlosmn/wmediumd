@@ -2,6 +2,7 @@
 
 # Start a number of nodes which all talk to the same dispatcher
 
+import psutil, os
 import subprocess, shlex, signal
 from optparse import OptionParser
 
@@ -20,6 +21,12 @@ def start_one(n):
 
     command = shlex.split(cmdline)
     return subprocess.Popen(command)
+
+def rewrite_config(loss):
+    cmd = shlex.split("../wmediumd/write-config -n 50 -o ../wmediumd/dispatcher-config.cfg -l %s" % loss)
+    subprocess.call(cmd, stderr=None)
+    pid = [ps.pid for ps in psutil.get_process_list() if ps.name == "dispatcher"]
+    os.kill(pid[0], signal.SIGHUP)
 
 def run(str):
     subprocess.call(shlex.split(str))
@@ -42,7 +49,11 @@ nodes = [start_one(i+2) for i in range(options.nodes)]
 
 try:
     while True:
-        raw_input("> ")
+        command = raw_input("> ")
+        if command.startswith("loss"):
+            rewrite_config(command[5:])
+        else:
+            print("Unkown command")
 except:
     pass
 
