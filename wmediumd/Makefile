@@ -52,7 +52,7 @@ LDFLAGS+=-lconfig
 OBJECTS=probability.o mac_address.o config.o proto.o
 HEADERS=proto.h wmediumd.h
 
-all: wmediumd dispatcher test write-config proto-test
+all: wmediumd dispatcher test write-config
 
 wmediumd: wmediumd.o $(OBJECTS) $(HEADERS)
 	$(CC) -o $@ wmediumd.o $(OBJECTS) $(LDFLAGS)
