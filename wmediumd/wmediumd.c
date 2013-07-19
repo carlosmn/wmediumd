@@ -649,8 +649,7 @@ void main_loop(void)
 
 		/* Max sleep 0.5 secs */
 		tv.tv_sec = 0;
-		tv.tv_usec = 1; // return immeditely
-		//tv.tv_usec = 500000;
+		tv.tv_usec = 500000;
 
 		/* TODO: see if it makes sense to prefer a different one each time */
 		ret = select(nfds, &rfds, NULL, NULL, &tv);
