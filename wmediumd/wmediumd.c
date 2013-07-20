@@ -387,6 +387,19 @@ void kill_handler() {
 	running = 0;
 }
 
+static size_t nr_unacked;
+
+void count_unacked(gpointer data, gpointer pnow)
+{
+	nr_unacked++;
+}
+
+void sighup_handler()
+{
+	nr_unacked = 0;
+	g_list_foreach(unacked, count_unacked, NULL);
+	printf("unacked: %zu\n", nr_unacked);
+}
 
 
 /*
@@ -503,9 +516,11 @@ int timed_out(struct timeval *val, struct timeval *now)
 	if (diff < 0)
 		diff = -diff;
 
-	/* Consider the frame lost after 5000us = 5ms */
-	if (diff > 5000 || rollover > 1)
+	/* Consider the frame lost after 10000us = 10ms */
+	if (diff > 10000 || rollover > 1) {
+		printf("timed out by %u\n", diff);
 		return 1;
+	}
 
 	return 0;
 }
@@ -737,6 +752,7 @@ int main(int argc, char* argv[]) {
 	/*Handle kill signals*/
 	running = 1;
 	signal(SIGUSR1, kill_handler);
+	signal(SIGHUP, sighup_handler);
 
 	/*init netlink*/
 	init_netlink();
