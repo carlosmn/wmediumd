@@ -582,6 +582,7 @@ int recv_and_ack(void)
 	struct mac_address addr;
 	ssize_t recvd, to_send;
 	struct wmd_msg msg;
+	struct ieee80211_hdr *hdr;
 	int signal;
 
 
@@ -601,9 +602,7 @@ int recv_and_ack(void)
 	//printf("Received message len %d\n", msg.data_len);
 	signal = get_signal_by_rate(0); /* dummy */
 	if (msg.ack) {
-		/* FIXME: keep track of this in the protocol? */
 		struct hwsim_tx_rate tx_attempts[IEEE80211_MAX_RATES_PER_TX];
-		/* FIXME: figure out if we should set the rest of the flags */
 		int flags = HWSIM_TX_STAT_ACK;
 		char dest[64];
 
@@ -629,8 +628,10 @@ int recv_and_ack(void)
 	addr = string_to_mac_address(msg.dst);
 	send_cloned_frame_msg(&addr, msg.data, msg.data_len, 0, signal);
 
-	/* send back the ACK */
-	if (!(msg.flags & HWSIM_TX_CTL_NO_ACK)) {
+	/* send back the ACK if we're the destination */
+	hdr = (struct ieee80211_hdr *)msg.data;
+	if (!(msg.flags & HWSIM_TX_CTL_NO_ACK) &&
+	    !memcmp(&addr, hdr->addr1, sizeof(addr))) {
 		to_send = fmt_ack(buffer, sizeof(buffer), msg.cookie, msg.addr);
 		/* FIXME: check return value */
 		send(disp_fd, buffer, to_send, 0);
