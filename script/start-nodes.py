@@ -6,7 +6,7 @@ import os
 import subprocess, shlex, signal
 from optparse import OptionParser
 
-BASE_PATH = "/home/carlos/slow/carlos/machines/"
+BASE_PATH = "/home/carlos/machines/"
 BASE_IMAGE = BASE_PATH + "wmediumd-skel"
 KERNEL = BASE_PATH + "vmlinuz-3.8-2-amd64"
 INITRD = BASE_PATH + "initrd.img-3.8-2-amd64"
@@ -45,6 +45,7 @@ dispatcher = subprocess.Popen(["../wmediumd/dispatcher"])
 run("brctl addbr br-wmediumd")
 run("ip address add 172.16.0.1/12 dev br-wmediumd")
 run("ip link set br-wmediumd up")
+
 
 # We start the nodes at 2 so the addresses and MACs line up and we can
 # have the .1 IP address for the dispatcher
